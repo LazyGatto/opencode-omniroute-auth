@@ -15,6 +15,8 @@ export interface OmniRouteModel {
   supportsTemperature?: boolean;
   supportsReasoning?: boolean;
   supportsAttachment?: boolean;
+  /** Reasoning-effort tiers advertised by OmniRoute (e.g. `["low","medium","xhigh"]`). */
+  effortTiers?: string[];
 
   // OmniRoute native fields (snake_case from API)
   context_length?: number;
@@ -32,6 +34,7 @@ export interface OmniRouteModel {
     attachment?: boolean;
     temperature?: boolean;
     toolcall?: boolean;
+    effort_tiers?: string[];
   };
 
   // Enriched fields from models.dev

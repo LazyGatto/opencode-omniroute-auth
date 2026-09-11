@@ -95,6 +95,7 @@ function normalizeModel(model: OmniRouteModel): OmniRouteModel {
       model.supportsTemperature ??
       model.temperature ??
       capabilities.temperature,
+    effortTiers: model.effortTiers ?? capabilities.effort_tiers,
   };
 }
 

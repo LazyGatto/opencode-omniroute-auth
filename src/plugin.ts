@@ -841,14 +841,59 @@ function toProviderModel(model: OmniRouteModel, baseUrl: string): OmniRouteProvi
     status: 'active',
     variants: model.variants && Object.keys(model.variants).length > 0
       ? model.variants
-      : supportsReasoning
-        ? {
-            low: { reasoningEffort: 'low' },
-            medium: { reasoningEffort: 'medium' },
-            high: { reasoningEffort: 'high' },
-          }
-        : {},
+      : buildReasoningVariants(model),
   };
+}
+
+/**
+ * The reasoning-effort tiers that map to a `reasoningEffort` variant value.
+ * "none" is deliberately absent — no-thinking is expressed through
+ * `chat_template_kwargs` (see `buildReasoningVariants`), not `reasoning_effort`.
+ */
+const THINKING_EFFORTS = ['low', 'medium', 'high', 'xhigh'] as const;
+type ThinkingEffort = (typeof THINKING_EFFORTS)[number];
+
+/**
+ * Build the reasoning variants for a model.
+ *
+ * OmniRoute advertises the real tiers in `capabilities.effort_tiers` (e.g.
+ * Qwen3.8 → `low/medium/xhigh`). When present they win over the generic
+ * `low/medium/high` fallback, so the picker never shows a tier the model does
+ * not support (vLLM/Qwen rejects `high` with 400).
+ *
+ * A `no-thinking` variant is added only for models that explicitly advertise
+ * effort tiers — that is the gateway's signal that the model's thinking is
+ * operator-controlled (typically a local OpenAI-compatible model such as
+ * vLLM/llama.cpp). Those disable thinking via `chat_template_kwargs.enable_thinking`,
+ * which the gateway forwards verbatim, rather than `reasoning_effort: "none"`
+ * (which OmniRoute clamps for passthrough providers). Models without advertised
+ * tiers keep the generic `low/medium/high` with no `no-thinking`, so the variant
+ * is never invented for models that cannot honor it.
+ */
+function buildReasoningVariants(
+  model: OmniRouteModel,
+): Record<string, OmniRouteModelVariant> {
+  const advertised = (model.effortTiers ?? []).filter(
+    (tier): tier is ThinkingEffort =>
+      typeof tier === 'string' &&
+      (THINKING_EFFORTS as readonly string[]).includes(tier),
+  );
+  const hasReasoning = model.supportsReasoning === true;
+
+  const variants: Record<string, OmniRouteModelVariant> = {};
+  if (advertised.length > 0) {
+    for (const tier of advertised) {
+      variants[tier] = { reasoningEffort: tier };
+    }
+    variants['no-thinking'] = { chat_template_kwargs: { enable_thinking: false } };
+    return variants;
+  }
+  if (hasReasoning) {
+    variants.low = { reasoningEffort: 'low' };
+    variants.medium = { reasoningEffort: 'medium' };
+    variants.high = { reasoningEffort: 'high' };
+  }
+  return variants;
 }
 
 function getModelFamily(modelId: string): string {

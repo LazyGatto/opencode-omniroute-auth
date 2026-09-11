@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- **Reasoning variants honor advertised effort tiers + scoped no-thinking variant** — `toProviderModel` now builds variants from OmniRoute's `capabilities.effort_tiers` (e.g. Qwen3.8 → `low/medium/xhigh`) instead of always emitting the generic `low/medium/high`. For models that explicitly advertise effort tiers it also adds a `no-thinking` variant that disables thinking via `chat_template_kwargs.enable_thinking=false` (works for local vLLM/llama.cpp models, where `reasoning_effort: "none"` is clamped by the gateway); models without advertised tiers keep the generic `low/medium/high` with no `no-thinking`. (`src/plugin.ts`, `src/models.ts`, `src/types.ts`)
+
 ## [1.2.2] - 2026-05-22
 
 ### Added
