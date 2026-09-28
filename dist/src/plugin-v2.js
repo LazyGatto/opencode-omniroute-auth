@@ -1,5 +1,5 @@
 import { DEFAULT_CONTEXT_LIMIT, DEFAULT_OUTPUT_LIMIT, MODEL_CACHE_TTL, OMNIROUTE_CHAT_PROVIDER_PACKAGE, OMNIROUTE_DEFAULT_MODELS, OMNIROUTE_PLUGIN_ID, OMNIROUTE_PROVIDER_ID, OMNIROUTE_RESPONSES_PROVIDER_PACKAGE, } from './constants.js';
-import { fetchModels } from './models.js';
+import { buildReasoningVariants, fetchModels } from './models.js';
 import { debug, warn } from './logger.js';
 import { sanitizeForLog } from './omniroute-combos.js';
 import { applyModelMetadataOverrides, createRuntimeConfig, formatModelDisplayName, getModelFamily, readAuthFromStore, } from './plugin.js';
@@ -17,20 +17,13 @@ export function toV2Model(model, config) {
     // Default to true: if the API does not explicitly disable tools, assume the
     // capability exists (matches the V1 behavior for OpenAI-compatible models).
     const supportsTools = model.supportsTools !== false;
-    const supportsReasoning = model.supportsReasoning === true;
     // V1 variant records (`{ low: { reasoningEffort: 'low' }, ... }`) become
     // V2 variant arrays (`[{ id: 'low', settings: { reasoningEffort: 'low' } }]`).
     // `reasoningEffort` is a semantic key the V2 core maps to `reasoning_effort`
     // in the request body for supporting providers.
     const variantSource = model.variants && Object.keys(model.variants).length > 0
         ? model.variants
-        : supportsReasoning
-            ? {
-                low: { reasoningEffort: 'low' },
-                medium: { reasoningEffort: 'medium' },
-                high: { reasoningEffort: 'high' },
-            }
-            : {};
+        : buildReasoningVariants(model);
     const variants = Object.entries(variantSource).map(([id, variant]) => ({
         id,
         settings: isRecord(variant) && Object.keys(variant).length > 0 ? { ...variant } : undefined,

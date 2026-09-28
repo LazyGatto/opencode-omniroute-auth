@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.1.0] - 2026-09-28
+
+### Added
+
+- **Reasoning variants from advertised effort tiers + scoped `no-thinking`** — `toProviderModel` (V1) and `toV2Model` (V2) now build reasoning variants from OmniRoute's `capabilities.effort_tiers` (e.g. Qwen3.8 → `low/medium/xhigh`) instead of always synthesizing the generic `low/medium/high`, so the picker never shows a tier the model rejects (vLLM/Qwen answers `high` with a 400). For models that explicitly advertise effort tiers, a `no-thinking` variant is added that disables thinking via `chat_template_kwargs.enable_thinking=false` — the way local vLLM/llama.cpp models turn thinking off, since the gateway clamps `reasoning_effort: "none"` for passthrough providers. Models without advertised tiers keep the generic `low/medium/high` and never get an invented `no-thinking`. (`src/models.ts`, `src/plugin.ts`, `src/plugin-v2.ts`, `src/types.ts`)
+
+## [2.0.0] - 2026-09-28
+
+### Added
+
+- **OpenCode V2 support (dual V1/V2 entrypoint)** — The default export is now a definition object `{ id, setup, server }`. V2 hosts call `setup(ctx)` (integration + provider registration, scoped `http.request`/`http.response` hooks); V1 hosts ≥1.18.29 call `server(ctx)`. SDK imports are type-only, so neither SDK is a runtime dependency. (`src/plugin-v2.ts`, `index.ts`)
+- **`{env:...}` baseURL templates** — unresolved `{env:VAR}` templates in `baseURL` now fall back to `process.env`.
+
+### Fixed
+
+- **Combo fetch 401 on V2** — `config.apiKey` is synced before the model refresh, so combo enrichment no longer sends an empty `Authorization` header.
+
+### Changed
+
+- `dist/` is committed so git installs work without running build scripts (pnpm 10+ blocks them).
+
 ## [1.2.3] - Unreleased
 
 ### Added

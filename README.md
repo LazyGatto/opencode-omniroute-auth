@@ -31,11 +31,12 @@ The plugin has **no runtime dependency on the OpenCode SDK**: all SDK imports ar
 - ✅ **models.dev Enrichment** - Enriches model metadata from models.dev with provider alias resolution
 - ✅ **Subscription Provider Fallback** - Falls back to public providers for subscription-based models
 - ✅ **Model Variant Support** - Automatically strips reasoning-effort suffixes (e.g. `gpt-5.5-xhigh` → `gpt-5.5`) for lookup
+- ✅ **Reasoning Effort Tiers** - Builds variants from OmniRoute's `capabilities.effort_tiers` (e.g. Qwen3.8 → `low/medium/xhigh`) and adds a `no-thinking` variant (`chat_template_kwargs.enable_thinking=false`) for models that advertise tiers
 - ✅ **Secure Logging** - Sanitized log output with async file I/O to prevent event loop blocking
 
 ## Installation
 
-The same `2.0.0` is available two ways — **use the package name that matches the route you installed from** in your config.
+The same `2.1.0` is available two ways — **use the package name that matches the route you installed from** in your config.
 
 ### From npm (recommended)
 
@@ -66,7 +67,7 @@ This route keeps the upstream package name, so use `"package": "opencode-omnirou
 This installs the latest commit of `main`. To pin a release, add a ref:
 
 ```bash
-npm install github:LazyGatto/opencode-omniroute-auth#v2.0.0
+npm install github:LazyGatto/opencode-omniroute-auth#v2.1.0
 ```
 
 **Where to install.** OpenCode resolves plugin packages by walking up the directory tree from the config it loads, looking in `node_modules`. Run the install command in:

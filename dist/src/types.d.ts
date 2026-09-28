@@ -13,6 +13,8 @@ export interface OmniRouteModel {
     supportsTemperature?: boolean;
     supportsReasoning?: boolean;
     supportsAttachment?: boolean;
+    /** Reasoning-effort tiers advertised by OmniRoute (e.g. `["low","medium","xhigh"]`). */
+    effortTiers?: string[];
     context_length?: number;
     max_input_tokens?: number;
     max_output_tokens?: number;
@@ -29,6 +31,7 @@ export interface OmniRouteModel {
         attachment?: boolean;
         temperature?: boolean;
         toolcall?: boolean;
+        effort_tiers?: string[];
     };
     temperature?: boolean;
     reasoning?: boolean;

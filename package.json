@@ -1,6 +1,6 @@
 {
   "name": "opencode-omniroute-auth",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "OpenCode V1/V2 authentication plugin for OmniRoute API with /connect command and dynamic model fetching",
   "type": "module",
   "main": "./dist/index.js",
