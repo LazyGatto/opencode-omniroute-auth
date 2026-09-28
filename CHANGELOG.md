@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.1.2] - 2026-09-28
+
+### Fixed
+
+- **Readable error logging** — `String(error)` rendered thrown non-`Error` values as `[object Object]`, hiding the real cause. A new `describeError()` helper keeps `Error: message`, JSON-encodes plain objects, and falls back to `String`. (`src/logger.ts`, `src/plugin-v2.ts`, `src/http-sanitize.ts`)
+
+### Changed
+
+- **Clearer `unref()` guard for the model-refresh interval** — replaced the cryptic `typeof timer !== 'number'` check with an explicit object/`unref` check. (`src/plugin-v2.ts`)
+
+### Tests
+
+- **Removed the fixed `setTimeout(100)` wait** in the V2 combo-refresh test; it now polls until the combo request appears (2s deadline). (`test/plugin-v2.test.mjs`)
+- Added `describeError()` unit coverage. (`test/logger.test.mjs`)
+
 ## [2.1.1] - 2026-09-28
 
 ### Fixed
