@@ -1,4 +1,22 @@
-import type { OmniRouteConfig, OmniRouteModel } from './types.js';
+import type { OmniRouteConfig, OmniRouteModel, OmniRouteModelVariant } from './types.js';
+/**
+ * Build the reasoning variants for a model.
+ *
+ * OmniRoute advertises the real tiers in `capabilities.effort_tiers` (e.g.
+ * Qwen3.8 → `low/medium/xhigh`). When present they win over the generic
+ * `low/medium/high` fallback, so the picker never shows a tier the model does
+ * not support (vLLM/Qwen rejects `high` with 400).
+ *
+ * A `no-thinking` variant is added only for models that explicitly advertise
+ * effort tiers — that is the gateway's signal that the model's thinking is
+ * operator-controlled (typically a local OpenAI-compatible model such as
+ * vLLM/llama.cpp). Those disable thinking via `chat_template_kwargs.enable_thinking`,
+ * which the gateway forwards verbatim, rather than `reasoning_effort: "none"`
+ * (which OmniRoute clamps for passthrough providers). Models without advertised
+ * tiers keep the generic `low/medium/high` with no `no-thinking`, so the variant
+ * is never invented for models that cannot honor it.
+ */
+export declare function buildReasoningVariants(model: OmniRouteModel): Record<string, OmniRouteModelVariant>;
 /**
  * Reverse a provider alias to its canonical form for metadata lookups.
  * Returns the original id if no alias mapping exists.

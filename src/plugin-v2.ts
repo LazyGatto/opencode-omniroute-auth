@@ -33,7 +33,7 @@ import {
   OMNIROUTE_RESPONSES_PROVIDER_PACKAGE,
 } from './constants.js';
 import type { OmniRouteConfig, OmniRouteModel } from './types.js';
-import { fetchModels } from './models.js';
+import { buildReasoningVariants, fetchModels } from './models.js';
 import { debug, warn } from './logger.js';
 import { sanitizeForLog } from './omniroute-combos.js';
 import {
@@ -108,7 +108,6 @@ export function toV2Model(model: OmniRouteModel, config: OmniRouteConfig): V2Mod
   // Default to true: if the API does not explicitly disable tools, assume the
   // capability exists (matches the V1 behavior for OpenAI-compatible models).
   const supportsTools = model.supportsTools !== false;
-  const supportsReasoning = model.supportsReasoning === true;
 
   // V1 variant records (`{ low: { reasoningEffort: 'low' }, ... }`) become
   // V2 variant arrays (`[{ id: 'low', settings: { reasoningEffort: 'low' } }]`).
@@ -117,13 +116,7 @@ export function toV2Model(model: OmniRouteModel, config: OmniRouteConfig): V2Mod
   const variantSource =
     model.variants && Object.keys(model.variants).length > 0
       ? model.variants
-      : supportsReasoning
-        ? {
-            low: { reasoningEffort: 'low' },
-            medium: { reasoningEffort: 'medium' },
-            high: { reasoningEffort: 'high' },
-          }
-        : {};
+      : buildReasoningVariants(model);
 
   const variants: V2ModelVariant[] = Object.entries(variantSource).map(([id, variant]) => ({
     id,

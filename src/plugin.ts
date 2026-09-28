@@ -10,7 +10,6 @@ import type {
   OmniRouteModelMetadataConfig,
   OmniRouteModelsDevConfig,
   OmniRouteProviderModel,
-  OmniRouteModelVariant,
 } from './types.js';
 import {
   OMNIROUTE_PROVIDER_ID,
@@ -21,7 +20,7 @@ import {
   PROVIDER_ALIAS_TO_CANONICAL,
   PROVIDER_DISPLAY_LABELS,
 } from './constants.js';
-import { fetchModels, resolveProviderAliasForMetadata } from './models.js';
+import { buildReasoningVariants, fetchModels, resolveProviderAliasForMetadata } from './models.js';
 import { warn, debug } from './logger.js';
 import { sanitizeForLog } from './omniroute-combos.js';
 import { isRecord, normalizeChatUsageResponse, sanitizeChatPayload } from './http-sanitize.js';
@@ -1044,13 +1043,7 @@ function toProviderModel(
     status: 'active',
     variants: model.variants && Object.keys(model.variants).length > 0
       ? model.variants
-      : supportsReasoning
-        ? {
-            low: { reasoningEffort: 'low' },
-            medium: { reasoningEffort: 'medium' },
-            high: { reasoningEffort: 'high' },
-          }
-        : {},
+      : buildReasoningVariants(model),
   };
 }
 

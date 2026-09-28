@@ -2704,3 +2704,99 @@ test('modelNameDisplay "prefixed" does not double-prefix an already prefixed nam
   assert.ok(entry, 'expected oc/big-pickle entry');
   assert.equal(entry.name, 'OpenCode Free / Big Pickle');
 });
+
+test('effort_tiers drive variants and add a no-thinking variant', async () => {
+  const plugin = await OmniRouteAuthPlugin({});
+
+  global.fetch = async (input) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url.endsWith('/v1/models')) {
+      return new Response(
+        JSON.stringify({
+          object: 'list',
+          data: [
+            {
+              id: 'vllm/Qwen3.8-27B-FP8',
+              name: 'Qwen 3.8 27B FP8',
+              contextWindow: 262144,
+              supportsReasoning: true,
+              capabilities: {
+                reasoning: true,
+                effort_tiers: ['low', 'medium', 'xhigh'],
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
+  const result = await plugin.provider.models(
+    {
+      id: 'omniroute',
+      name: 'OmniRoute',
+      source: 'config',
+      env: [],
+      options: { baseURL: 'http://localhost:20128/v1', apiMode: 'chat' },
+      models: {},
+    },
+    { auth: { type: 'api', key: 'test-key' } },
+  );
+
+  const variants = result['vllm/Qwen3.8-27B-FP8'].variants;
+  assert.ok(variants.low);
+  assert.equal(variants.low.reasoningEffort, 'low');
+  assert.ok(variants.medium);
+  assert.ok(variants.xhigh);
+  assert.equal(variants.xhigh.reasoningEffort, 'xhigh');
+  // the generic "high" must not be invented when the model advertises xhigh
+  assert.equal(variants.high, undefined);
+  // no-thinking disables thinking via the chat template, not reasoning_effort
+  assert.ok(variants['no-thinking']);
+  assert.equal(variants['no-thinking'].chat_template_kwargs.enable_thinking, false);
+});
+
+test('effort_tiers fall back to generic low/medium/high without advertised tiers', async () => {
+  const plugin = await OmniRouteAuthPlugin({});
+
+  global.fetch = async (input) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url.endsWith('/v1/models')) {
+      return new Response(
+        JSON.stringify({
+          object: 'list',
+          data: [{ id: 'vendor/plain', name: 'Plain', supportsReasoning: true }],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
+  const result = await plugin.provider.models(
+    {
+      id: 'omniroute',
+      name: 'OmniRoute',
+      source: 'config',
+      env: [],
+      options: { baseURL: 'http://localhost:20128/v1', apiMode: 'chat' },
+      models: {},
+    },
+    { auth: { type: 'api', key: 'test-key' } },
+  );
+
+  const variants = result['vendor/plain'].variants;
+  assert.ok(variants.low);
+  assert.ok(variants.medium);
+  assert.ok(variants.high);
+  // no advertised tiers → no no-thinking variant is invented
+  assert.equal(variants['no-thinking'], undefined);
+});

@@ -200,6 +200,36 @@ test('toV2Model applies capability and variant edge cases', () => {
   assert.equal(toV2Models([{ id: 'a' }, { id: 'b' }], config).length, 2);
 });
 
+test('toV2Model builds variants from advertised effort_tiers and adds no-thinking', () => {
+  const config = { baseUrl: DEAD_BASE_URL, apiKey: 'k', apiMode: 'chat' };
+
+  const qwen = toV2Model(
+    {
+      id: 'vllm/Qwen3.8-27B-FP8',
+      name: 'Qwen 3.8 27B FP8',
+      supportsReasoning: true,
+      effortTiers: ['low', 'medium', 'xhigh'],
+    },
+    config,
+  );
+  assert.deepEqual(qwen.variants, [
+    { id: 'low', settings: { reasoningEffort: 'low' } },
+    { id: 'medium', settings: { reasoningEffort: 'medium' } },
+    { id: 'xhigh', settings: { reasoningEffort: 'xhigh' } },
+    { id: 'no-thinking', settings: { chat_template_kwargs: { enable_thinking: false } } },
+  ]);
+
+  // No advertised tiers -> generic low/medium/high, and never an invented no-thinking.
+  const generic = toV2Model(
+    { id: 'vendor/plain', name: 'Plain', supportsReasoning: true },
+    config,
+  );
+  assert.deepEqual(
+    generic.variants.map((variant) => variant.id),
+    ['low', 'medium', 'high'],
+  );
+});
+
 test('setup registers integration, provider, and scoped http hooks', async () => {
   const dataHome = makeDataHome();
   const restore = withAuthEnv({ dataHome, envKey: null });

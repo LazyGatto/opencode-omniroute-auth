@@ -2,7 +2,7 @@ import { homedir } from 'os';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { OMNIROUTE_PROVIDER_ID, OMNIROUTE_DEFAULT_MODELS, OMNIROUTE_ENDPOINTS, DEFAULT_CONTEXT_LIMIT, DEFAULT_OUTPUT_LIMIT, PROVIDER_ALIAS_TO_CANONICAL, PROVIDER_DISPLAY_LABELS, } from './constants.js';
-import { fetchModels, resolveProviderAliasForMetadata } from './models.js';
+import { buildReasoningVariants, fetchModels, resolveProviderAliasForMetadata } from './models.js';
 import { warn, debug } from './logger.js';
 import { sanitizeForLog } from './omniroute-combos.js';
 import { isRecord, normalizeChatUsageResponse, sanitizeChatPayload } from './http-sanitize.js';
@@ -812,13 +812,7 @@ function toProviderModel(model, baseUrl, providerNpm, modelNameDisplay) {
         status: 'active',
         variants: model.variants && Object.keys(model.variants).length > 0
             ? model.variants
-            : supportsReasoning
-                ? {
-                    low: { reasoningEffort: 'low' },
-                    medium: { reasoningEffort: 'medium' },
-                    high: { reasoningEffort: 'high' },
-                }
-                : {},
+            : buildReasoningVariants(model),
     };
 }
 export function getModelFamily(modelId) {
