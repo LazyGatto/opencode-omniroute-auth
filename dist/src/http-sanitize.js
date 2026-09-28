@@ -12,7 +12,7 @@
  *    `prompt_tokens` so OpenCode's per-token accounting matches what the
  *    provider actually billed as fresh input.
  */
-import { debug, warn } from './logger.js';
+import { debug, describeError, warn } from './logger.js';
 import { sanitizeForLog } from './omniroute-combos.js';
 export function isRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -171,7 +171,7 @@ export function sanitizeChatPayload(rawBody, url) {
         payload = JSON.parse(rawBody);
     }
     catch (error) {
-        warn(`Failed to parse request body as JSON; forwarding unchanged: ${sanitizeForLog(String(error))}`);
+        warn(`Failed to parse request body as JSON; forwarding unchanged: ${sanitizeForLog(describeError(error))}`);
         return undefined;
     }
     if (!isRecord(payload)) {

@@ -402,8 +402,12 @@ test('refresh passes the resolved API key to combo enrichment', async () => {
     });
     const cleanup = await setup(ctx);
 
-    // Give the initial (void) refresh time to run to completion.
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    // The initial model refresh is fire-and-forget (`void refreshModels()`), so
+    // wait until it reaches combo enrichment instead of sleeping a fixed amount.
+    const deadline = Date.now() + 2000;
+    while (!requests.some((r) => r.url.includes('/combos')) && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
 
     const combo = requests.find((r) => r.url.includes('/combos'));
     assert.ok(combo, 'expected a combo enrichment fetch');

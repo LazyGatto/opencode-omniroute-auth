@@ -1,6 +1,6 @@
 import { DEFAULT_CONTEXT_LIMIT, DEFAULT_OUTPUT_LIMIT, MODEL_CACHE_TTL, OMNIROUTE_CHAT_PROVIDER_PACKAGE, OMNIROUTE_DEFAULT_MODELS, OMNIROUTE_PLUGIN_ID, OMNIROUTE_PROVIDER_ID, OMNIROUTE_RESPONSES_PROVIDER_PACKAGE, } from './constants.js';
 import { buildReasoningVariants, fetchModels } from './models.js';
-import { debug, warn } from './logger.js';
+import { debug, describeError, warn } from './logger.js';
 import { sanitizeForLog } from './omniroute-combos.js';
 import { applyModelMetadataOverrides, createRuntimeConfig, formatModelDisplayName, getModelFamily, readAuthFromStore, } from './plugin.js';
 import { isRecord, normalizeChatUsageResponse, sanitizeChatPayload } from './http-sanitize.js';
@@ -107,7 +107,7 @@ async function resolveApiKey(ctx) {
         }
     }
     catch (error) {
-        debug(`V2 integration credential resolution failed: ${sanitizeForLog(String(error))}`);
+        debug(`V2 integration credential resolution failed: ${sanitizeForLog(describeError(error))}`);
     }
     const stored = await readAuthFromStore(OMNIROUTE_PROVIDER_ID);
     if (stored?.key) {
@@ -160,7 +160,7 @@ export async function setup(ctx) {
         });
     }
     catch (error) {
-        warn(`OmniRoute V2: failed to register integration: ${sanitizeForLog(String(error))}`);
+        warn(`OmniRoute V2: failed to register integration: ${sanitizeForLog(describeError(error))}`);
     }
     // 2. Provider registration. The transform must be synchronous and
     //    replayable: it reads the current state from the closure, so the
@@ -225,7 +225,7 @@ export async function setup(ctx) {
             debug(`OmniRoute V2: published ${models.length} models`);
         }
         catch (error) {
-            warn(`OmniRoute V2: model refresh failed: ${sanitizeForLog(String(error))}`);
+            warn(`OmniRoute V2: model refresh failed: ${sanitizeForLog(describeError(error))}`);
         }
     };
     void refreshModels();
@@ -235,8 +235,10 @@ export async function setup(ctx) {
     const timer = setInterval(() => {
         void refreshModels();
     }, ttl);
-    if (typeof timer !== 'number') {
-        timer.unref?.();
+    // Node returns a Timeout object that supports `unref()` so the interval does
+    // not keep the process alive; browsers return a numeric handle without it.
+    if (typeof timer === 'object' && timer !== null && typeof timer.unref === 'function') {
+        timer.unref();
     }
     // 4. Session http hooks, scoped to the omniroute provider.
     const requestRegistration = await ctx.session.hook('http.request', async (event) => {
@@ -267,7 +269,7 @@ export async function setup(ctx) {
             debug(`OmniRoute V2: sanitized request payload for ${sanitizeForLog(url)}`);
         }
         catch (error) {
-            warn(`OmniRoute V2: http.request hook failed: ${sanitizeForLog(String(error))}`);
+            warn(`OmniRoute V2: http.request hook failed: ${sanitizeForLog(describeError(error))}`);
         }
     }, { providerID: OMNIROUTE_PROVIDER_ID });
     const responseRegistration = await ctx.session.hook('http.response', async (event) => {
@@ -279,7 +281,7 @@ export async function setup(ctx) {
             event.response = await normalizeChatUsageResponse(url, event.response);
         }
         catch (error) {
-            warn(`OmniRoute V2: http.response hook failed: ${sanitizeForLog(String(error))}`);
+            warn(`OmniRoute V2: http.response hook failed: ${sanitizeForLog(describeError(error))}`);
         }
     }, { providerID: OMNIROUTE_PROVIDER_ID });
     return async () => {
