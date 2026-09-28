@@ -36,7 +36,7 @@ The plugin has **no runtime dependency on the OpenCode SDK**: all SDK imports ar
 
 ## Installation
 
-The same `2.1.0` is available two ways — **use the package name that matches the route you installed from** in your config.
+The same release is available two ways — **use the package name that matches the route you installed from** in your config.
 
 ### From npm (recommended)
 
@@ -67,7 +67,7 @@ This route keeps the upstream package name, so use `"package": "opencode-omnirou
 This installs the latest commit of `main`. To pin a release, add a ref:
 
 ```bash
-npm install github:LazyGatto/opencode-omniroute-auth#v2.1.0
+npm install github:LazyGatto/opencode-omniroute-auth#v2.1.2
 ```
 
 **Where to install.** OpenCode resolves plugin packages by walking up the directory tree from the config it loads, looking in `node_modules`. Run the install command in:
