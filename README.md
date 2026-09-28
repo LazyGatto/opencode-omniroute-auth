@@ -409,7 +409,16 @@ npm run dev
 
 # Clean
 npm run clean
+
+# Run tests (builds first)
+npm test
 ```
+
+`dist/` is committed to the repo: pnpm 10+ refuses to run build scripts for
+git-hosted packages unless they are allowlisted, so git installs
+(`pnpm add github:org/opencode-omniroute-auth`) must ship prebuilt output.
+After any source change, run `npm run build && git add dist` before
+committing.
 
 ## Troubleshooting
 
