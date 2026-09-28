@@ -1,5 +1,7 @@
 # OpenCode OmniRoute Auth Plugin
 
+[![npm](https://img.shields.io/npm/v/@lazygatto/opencode-omniroute-auth.svg)](https://www.npmjs.com/package/@lazygatto/opencode-omniroute-auth)
+
 🔌 Authentication plugin for [OpenCode](https://opencode.ai) to connect to an [OmniRoute](https://omniroute.ai) API instance.
 
 This is a fork of [Alph4d0g/opencode-omniroute-auth](https://github.com/Alph4d0g/opencode-omniroute-auth) (base: `v1.2.3`), extended with **OpenCode V2** support. Install **this fork** from GitHub if you run OpenCode 2 — the npm-published `opencode-omniroute-auth@1.x` only works on V1.
