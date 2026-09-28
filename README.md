@@ -428,6 +428,20 @@ npm test
 
 `dist/` is committed to the repo: pnpm 10+ refuses to run build scripts for git-hosted packages unless they are allowlisted, so git installs must ship prebuilt output. After any source change, run `npm run build && git add dist` before committing.
 
+### Publishing to npm
+
+The published package is `@lazygatto/opencode-omniroute-auth`, built from the `release/npm` branch (`main` keeps the upstream package name for git installs and for the upstream PR). To cut a release:
+
+```bash
+git checkout release/npm
+git merge main            # pick up new commits
+npm version patch         # or minor / major; the same version cannot be published twice
+git push origin release/npm
+npm publish               # prepublishOnly rebuilds dist + runs check:exports, then asks for the 2FA code
+```
+
+`npm publish` accepts `--otp=<code>` if the code is passed non-interactively. 2FA is `auth-and-writes` on this account, so `npm login --auth-type=web` does not bypass the publish prompt — an authenticator code is always required. Automation tokens that skip 2FA are being restricted by npm for direct publishing.
+
 ## Troubleshooting
 
 ### Connection Failed
