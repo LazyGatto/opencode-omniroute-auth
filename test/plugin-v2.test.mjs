@@ -479,6 +479,37 @@ test('http.response hook normalizes cached usage on /chat/completions', async ()
   }
 });
 
+test('unresolved {env:...} baseURL templates fall back to process env', async () => {
+  const { createRuntimeConfig } = await import('../dist/src/plugin.js');
+  const prev = process.env.OMNIROUTE_TEST_BASE_URL;
+  process.env.OMNIROUTE_TEST_BASE_URL = 'https://omni.example/v1';
+  try {
+    const fromTemplate = createRuntimeConfig(
+      { baseURL: '{env:OMNIROUTE_TEST_BASE_URL}' },
+      '',
+    );
+    assert.equal(fromTemplate.baseUrl, 'https://omni.example/v1');
+
+    const resolved = createRuntimeConfig(
+      { baseURL: 'https://already-resolved.example/v1' },
+      '',
+    );
+    assert.equal(resolved.baseUrl, 'https://already-resolved.example/v1');
+
+    const missing = createRuntimeConfig(
+      { baseURL: '{env:OMNIROUTE_TEST_MISSING_URL}' },
+      '',
+    );
+    assert.equal(missing.baseUrl, 'http://localhost:20128/v1');
+
+    const absent = createRuntimeConfig({}, '');
+    assert.equal(absent.baseUrl, 'http://localhost:20128/v1');
+  } finally {
+    if (prev === undefined) delete process.env.OMNIROUTE_TEST_BASE_URL;
+    else process.env.OMNIROUTE_TEST_BASE_URL = prev;
+  }
+});
+
 test('sanitizeChatPayload leaves non-target models untouched', () => {
   const url = 'https://omni.example/v1/chat/completions';
   const body = JSON.stringify({

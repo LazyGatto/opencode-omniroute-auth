@@ -337,13 +337,27 @@ function isApiMode(value: unknown): value is OmniRouteApiMode {
   return value === 'chat' || value === 'responses';
 }
 
+const ENV_TEMPLATE_RE = /^\{env:([A-Za-z_][A-Za-z0-9_]*)\}$/;
+
+function resolveEnvTemplate(value: string): string {
+  // Some hosts (OpenCode V2 plugin options) may pass config values through
+  // without resolving {env:...} templates. Fall back to the process
+  // environment for that case.
+  const match = ENV_TEMPLATE_RE.exec(value.trim());
+  if (!match) {
+    return value;
+  }
+  const envValue = process.env[match[1]];
+  return typeof envValue === 'string' && envValue.trim() !== '' ? envValue : value;
+}
+
 function getBaseUrl(options?: Record<string, unknown>): string {
   const rawBaseUrl = options?.baseURL;
   if (typeof rawBaseUrl !== 'string') {
     return OMNIROUTE_ENDPOINTS.BASE_URL;
   }
 
-  const trimmed = rawBaseUrl.trim();
+  const trimmed = resolveEnvTemplate(rawBaseUrl).trim();
   if (trimmed === '') {
     return OMNIROUTE_ENDPOINTS.BASE_URL;
   }
