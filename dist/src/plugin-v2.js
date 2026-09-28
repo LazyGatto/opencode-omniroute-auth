@@ -181,11 +181,14 @@ export async function setup(ctx) {
         const key = await resolveApiKey(ctx);
         if (key && key !== state.apiKey) {
             state.apiKey = key;
-            config.apiKey = key;
         }
         if (!state.apiKey) {
             return;
         }
+        // Keep the shared config in sync on every pass: fetchModels receives the
+        // key as a parameter, but combo enrichment (enrichComboModels ->
+        // fetchComboData) reads config.apiKey.
+        config.apiKey = state.apiKey;
         try {
             const fetched = await fetchModels(config, state.apiKey, config.refreshOnList !== false);
             const effective = applyModelMetadataOverrides(fetched, options.modelMetadata);

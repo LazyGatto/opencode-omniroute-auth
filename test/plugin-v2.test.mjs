@@ -338,6 +338,53 @@ test('setup selects the openai driver package for responses apiMode', async () =
   }
 });
 
+test('refresh passes the resolved API key to combo enrichment', async () => {
+  const dataHome = makeDataHome();
+  const restore = withAuthEnv({ dataHome, envKey: 'sk-refresh-key' });
+
+  const requests = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    requests.push({ url, auth: init?.headers?.Authorization ?? null });
+    if (url.includes('/models')) {
+      return new Response(
+        JSON.stringify({ data: [{ id: 'auto/best-coding', name: 'Best Coding', owned_by: 'combo' }] }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }
+    if (url.includes('/combos')) {
+      return new Response(
+        JSON.stringify({
+          combos: [{ name: 'auto/best-coding', models: ['openai/gpt-5'], strategy: 'priority' }],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }
+    return new Response('not found', { status: 404 });
+  };
+
+  try {
+    const { ctx } = makeCtx({
+      options: { baseURL: 'https://omni.example/v1', modelCacheTtl: 3600000, refreshOnList: true },
+    });
+    const cleanup = await setup(ctx);
+
+    // Give the initial (void) refresh time to run to completion.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const combo = requests.find((r) => r.url.includes('/combos'));
+    assert.ok(combo, 'expected a combo enrichment fetch');
+    assert.equal(combo.auth, 'Bearer sk-refresh-key');
+
+    await cleanup();
+  } finally {
+    restore();
+    rmSync(dataHome, { recursive: true, force: true });
+    globalThis.fetch = realFetch;
+  }
+});
+
 test('http.request hook adds bearer auth and sanitizes the payload', async () => {
   const dataHome = makeDataHome();
   const restore = withAuthEnv({ dataHome, envKey: 'sk-hook-key' });
