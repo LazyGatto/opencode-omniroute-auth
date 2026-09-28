@@ -216,7 +216,9 @@ test('toV2Model builds variants from advertised effort_tiers and adds no-thinkin
     { id: 'low', settings: { reasoningEffort: 'low' } },
     { id: 'medium', settings: { reasoningEffort: 'medium' } },
     { id: 'xhigh', settings: { reasoningEffort: 'xhigh' } },
-    { id: 'no-thinking', settings: { chat_template_kwargs: { enable_thinking: false } } },
+    // chat_template_kwargs is a raw body field, not a provider option: it must
+    // land in `body`, otherwise the openai-compatible driver drops it.
+    { id: 'no-thinking', body: { chat_template_kwargs: { enable_thinking: false } } },
   ]);
 
   // No advertised tiers -> generic low/medium/high, and never an invented no-thinking.
