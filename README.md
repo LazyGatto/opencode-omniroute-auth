@@ -1,8 +1,10 @@
 # OpenCode OmniRoute Auth Plugin
 
+[![npm](https://img.shields.io/npm/v/@lazygatto/opencode-omniroute-auth.svg)](https://www.npmjs.com/package/@lazygatto/opencode-omniroute-auth)
+
 🔌 Authentication plugin for [OpenCode](https://opencode.ai) to connect to an [OmniRoute](https://omniroute.ai) API instance.
 
-This is a fork of [Alph4d0g/opencode-omniroute-auth](https://github.com/Alph4d0g/opencode-omniroute-auth) (base: `v1.2.3`), extended with **OpenCode V2** support. Install **this fork** from GitHub if you run OpenCode 2 — the npm-published `opencode-omniroute-auth@1.x` only works on V1.
+This is a fork of [Alph4d0g/opencode-omniroute-auth](https://github.com/Alph4d0g/opencode-omniroute-auth) (base: `v1.2.3`), extended with **OpenCode V2** support. Install it from npm as `@lazygatto/opencode-omniroute-auth`, or straight from this repo — the upstream npm package (`opencode-omniroute-auth@1.x`) only works on V1.
 
 ## Compatibility
 
@@ -33,7 +35,17 @@ The plugin has **no runtime dependency on the OpenCode SDK**: all SDK imports ar
 
 ## Installation
 
-### From this fork (GitHub)
+The same `2.0.0` is available two ways — **use the package name that matches the route you installed from** in your config.
+
+### From npm (recommended)
+
+```bash
+npm install @lazygatto/opencode-omniroute-auth
+```
+
+Published as an **unofficial** fork under the `@lazygatto` scope. Use `"package": "@lazygatto/opencode-omniroute-auth"` in your config.
+
+### From GitHub (git spec)
 
 ```bash
 # npm
@@ -49,6 +61,8 @@ yarn add github:LazyGatto/opencode-omniroute-auth
 bun add github:LazyGatto/opencode-omniroute-auth
 ```
 
+This route keeps the upstream package name, so use `"package": "opencode-omniroute-auth"` in your config — all examples below use that name; substitute the scoped one if you installed from npm.
+
 This installs the latest commit of `main`. To pin a release, add a ref:
 
 ```bash
@@ -60,7 +74,7 @@ npm install github:LazyGatto/opencode-omniroute-auth#v2.0.0
 - your **project root** — for a project-level config (`opencode.json` or `.opencode/` in the project), or
 - your **home directory** — for a global config (`~/.config/opencode/opencode.json`); the package lands in `~/node_modules`, which is visible when OpenCode walks up from `~/.config/opencode`.
 
-Because the package name is the same as the upstream npm package, installing the git version replaces any previously installed `opencode-omniroute-auth` copy in that `node_modules`.
+The git route lands in `node_modules/opencode-omniroute-auth` (the upstream package name), so it replaces any previously installed upstream copy in that `node_modules`. The npm route lands in `node_modules/@lazygatto/opencode-omniroute-auth` and can sit alongside it.
 
 `dist/` is committed to the repository, so **no build script runs during install**. That also sidesteps pnpm 10+ `ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED` for git-hosted packages (no `prepare` script, no allowlist needed).
 
