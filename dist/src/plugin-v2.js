@@ -6,6 +6,38 @@ import { applyModelMetadataOverrides, createRuntimeConfig, formatModelDisplayNam
 import { isRecord, normalizeChatUsageResponse, sanitizeChatPayload } from './http-sanitize.js';
 const OMNIROUTE_PROVIDER_NAME = 'OmniRoute';
 /**
+ * Variant keys that are OpenCode provider-package options and must stay in
+ * `settings`. Everything else in a variant record is a raw request-body field
+ * (e.g. `chat_template_kwargs`) and must go to `body`: the openai-compatible
+ * driver only knows a fixed set of options, and silently drops unknown
+ * `settings` keys, so putting body fields there makes them disappear.
+ */
+const VARIANT_SETTINGS_KEYS = new Set(['reasoningEffort']);
+/**
+ * Map a V1 variant record to a V2 variant, splitting provider options
+ * (`settings`) from raw request-body fields (`body`).
+ */
+function toV2Variant(id, variant) {
+    if (!isRecord(variant) || Object.keys(variant).length === 0) {
+        return { id };
+    }
+    const settings = {};
+    const body = {};
+    for (const [key, value] of Object.entries(variant)) {
+        if (VARIANT_SETTINGS_KEYS.has(key)) {
+            settings[key] = value;
+        }
+        else {
+            body[key] = value;
+        }
+    }
+    return {
+        id,
+        ...(Object.keys(settings).length > 0 ? { settings } : {}),
+        ...(Object.keys(body).length > 0 ? { body } : {}),
+    };
+}
+/**
  * Convert an OmniRoute model to a V2 model definition.
  *
  * Mirrors the V1 `toProviderModel` mapping: same display-name formatting,
@@ -18,16 +50,14 @@ export function toV2Model(model, config) {
     // capability exists (matches the V1 behavior for OpenAI-compatible models).
     const supportsTools = model.supportsTools !== false;
     // V1 variant records (`{ low: { reasoningEffort: 'low' }, ... }`) become
-    // V2 variant arrays (`[{ id: 'low', settings: { reasoningEffort: 'low' } }]`).
-    // `reasoningEffort` is a semantic key the V2 core maps to `reasoning_effort`
-    // in the request body for supporting providers.
+    // V2 variant arrays. Provider options go to `settings` (`reasoningEffort` is
+    // a semantic key the V2 core maps to `reasoning_effort` in the request body),
+    // while raw body fields such as `chat_template_kwargs` go to `body` — see
+    // `toV2Variant`.
     const variantSource = model.variants && Object.keys(model.variants).length > 0
         ? model.variants
         : buildReasoningVariants(model);
-    const variants = Object.entries(variantSource).map(([id, variant]) => ({
-        id,
-        settings: isRecord(variant) && Object.keys(variant).length > 0 ? { ...variant } : undefined,
-    }));
+    const variants = Object.entries(variantSource).map(([id, variant]) => toV2Variant(id, variant));
     return {
         id: model.id,
         modelID: model.id,

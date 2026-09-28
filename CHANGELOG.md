@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.1.1] - 2026-09-28
+
+### Fixed
+
+- **`no-thinking` actually disables thinking on OpenCode V2** — V2 variant `settings` are provider-package options, and the `openai-compatible` driver silently drops unknown keys, so `chat_template_kwargs: { enable_thinking: false }` never reached the request body (confirmed in OmniRoute `call_logs`: the `no-thinking` request carried no `chat_template_kwargs` and vLLM kept thinking at its default tier). Variants are now split: provider options (`reasoningEffort`) stay in `settings`, everything else (e.g. `chat_template_kwargs`) goes to the variant `body`. (`src/plugin-v2.ts`)
+
 ## [2.1.0] - 2026-09-28
 
 ### Added

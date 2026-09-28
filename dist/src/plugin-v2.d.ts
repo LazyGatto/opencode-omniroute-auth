@@ -32,6 +32,7 @@ type Context = Plugin.Context;
 export interface V2ModelVariant {
     id: string;
     settings?: Record<string, unknown>;
+    body?: Record<string, unknown>;
 }
 export interface V2ModelCost {
     input: number;
