@@ -33,7 +33,15 @@ The plugin has **no runtime dependency on the OpenCode SDK**: all SDK imports ar
 
 ## Installation
 
-### From this fork (GitHub)
+### From npm (this fork)
+
+```bash
+npm install @lazygatto/opencode-omniroute-auth
+```
+
+This fork is published as an **unofficial** package under the `@lazygatto` scope. Reference it by that name in your config (`"package": "@lazygatto/opencode-omniroute-auth"`).
+
+### From GitHub (this fork)
 
 ```bash
 # npm
@@ -60,11 +68,11 @@ npm install github:LazyGatto/opencode-omniroute-auth#v2.0.0
 - your **project root** — for a project-level config (`opencode.json` or `.opencode/` in the project), or
 - your **home directory** — for a global config (`~/.config/opencode/opencode.json`); the package lands in `~/node_modules`, which is visible when OpenCode walks up from `~/.config/opencode`.
 
-Because the package name is the same as the upstream npm package, installing the git version replaces any previously installed `opencode-omniroute-auth` copy in that `node_modules`.
+A git install follows the package's `name` field, which on the default branch is still `opencode-omniroute-auth` — so this route lands in `node_modules/opencode-omniroute-auth`. Use that string in your config if you install this way; use `"package": "@lazygatto/opencode-omniroute-auth"` for the npm route above.
 
 `dist/` is committed to the repository, so **no build script runs during install**. That also sidesteps pnpm 10+ `ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED` for git-hosted packages (no `prepare` script, no allowlist needed).
 
-### From npm (upstream, V1 only)
+### Upstream npm package (V1 only)
 
 ```bash
 npm install opencode-omniroute-auth   # v1.2.x — OpenCode V1 hosts only
@@ -81,7 +89,7 @@ npm install opencode-omniroute-auth   # v1.2.x — OpenCode V1 hosts only
    {
      "plugins": [
        {
-         "package": "opencode-omniroute-auth",
+         "package": "@lazygatto/opencode-omniroute-auth",
          "options": {
            "baseURL": "http://localhost:20128/v1"   // or "{env:OMNIROUTE_BASE_URL}"
          }
@@ -102,7 +110,7 @@ The `provider.omniroute` config entry is **optional** in V2 — keep or drop it;
 
 ```jsonc
 {
-  "plugin": ["opencode-omniroute-auth"],
+  "plugin": ["@lazygatto/opencode-omniroute-auth"],
   "provider": {
     "omniroute": {
       "options": { "baseURL": "http://localhost:20128/v1" }
@@ -158,7 +166,7 @@ Full V2 example:
 {
   "plugins": [
     {
-      "package": "opencode-omniroute-auth",
+      "package": "@lazygatto/opencode-omniroute-auth",
       "options": {
         "baseURL": "{env:OMNIROUTE_BASE_URL}",
         "apiMode": "chat",
@@ -184,7 +192,7 @@ You can disable enrichment or override defaults:
 {
   "plugins": [
     {
-      "package": "opencode-omniroute-auth",
+      "package": "@lazygatto/opencode-omniroute-auth",
       "options": {
         "modelsDev": {
           "enabled": true,
@@ -209,7 +217,7 @@ In `opencode.js` you can use RegExp matchers:
 {
   plugins: [
     {
-      package: 'opencode-omniroute-auth',
+      package: '@lazygatto/opencode-omniroute-auth',
       options: {
         modelMetadata: [
           { match: /gpt-5\.3-codex$/i, contextWindow: 200000, maxTokens: 8192 },
@@ -227,7 +235,7 @@ In JSON configs, use an object keyed by model id:
 {
   "plugins": [
     {
-      "package": "opencode-omniroute-auth",
+      "package": "@lazygatto/opencode-omniroute-auth",
       "options": {
         "modelMetadata": {
           "virtual/my-custom-model": { "contextWindow": 50000, "maxTokens": 2048 }
@@ -293,7 +301,7 @@ This plugin automatically fetches available models from OmniRoute's `/v1/models`
 ### Refresh / clear the cache programmatically
 
 ```typescript
-import { clearModelCache } from 'opencode-omniroute-auth/runtime';
+import { clearModelCache } from '@lazygatto/opencode-omniroute-auth/runtime';
 
 clearModelCache();
 ```
@@ -318,7 +326,7 @@ import type {
   OmniRouteModel,
   OmniRouteModelMetadataConfig,
   OmniRouteModelsDevConfig,
-} from "opencode-omniroute-auth";
+} from "@lazygatto/opencode-omniroute-auth";
 
 interface OmniRouteConfig {
   baseUrl: string;
@@ -380,7 +388,7 @@ import {
   fetchComboData,
   resolveUnderlyingModels,
   calculateModelCapabilities,
-} from 'opencode-omniroute-auth/runtime';
+} from '@lazygatto/opencode-omniroute-auth/runtime';
 
 // Fetch models manually (with automatic normalization and enrichment)
 const models = await fetchModels(config, apiKey);
@@ -433,13 +441,13 @@ If you see "Connection failed" when running `/connect omniroute`:
 1. Check your OmniRoute `/v1/models` endpoint is accessible
 2. Ensure the plugin `baseURL` option points to your OmniRoute endpoint
 3. Re-run `/connect omniroute` to refresh your API key
-4. If you use the package programmatically, call `clearModelCache()` from `opencode-omniroute-auth/runtime`
+4. If you use the package programmatically, call `clearModelCache()` from `@lazygatto/opencode-omniroute-auth/runtime`
 5. Check the OpenCode logs (`~/.local/share/opencode/log/opencode.log`) for error messages
 
 ### Plugin Not Loading
 
-1. On V2 use the `plugins` object entry (see Quick start); on V1 (≥ 1.18.29) use `"plugin": ["opencode-omniroute-auth"]`
-2. Ensure the installed package is **2.0.0 or newer** (`node -e "console.log(require('./node_modules/opencode-omniroute-auth/package.json').version)"` from the config's directory tree)
+1. On V2 use the `plugins` object entry (see Quick start); on V1 (≥ 1.18.29) use `"plugin": ["@lazygatto/opencode-omniroute-auth"]`
+2. Ensure the installed package is **2.0.0 or newer** (`node -e "console.log(require('./node_modules/@lazygatto/opencode-omniroute-auth/package.json').version)"` from the config's directory tree)
 3. Ensure the package is in a `node_modules` visible from the config directory (see Installation → Where to install)
 4. Restart OpenCode — or the background service — after installing or updating the package; a running server keeps the old module in memory
 5. Check plugin install cache/logs under `~/.cache/opencode/node_modules`
