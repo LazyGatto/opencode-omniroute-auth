@@ -1,4 +1,4 @@
-import { OMNIROUTE_DEFAULT_MODELS, OMNIROUTE_ENDPOINTS, MODEL_CACHE_TTL, REQUEST_TIMEOUT, PROVIDER_ALIAS_TO_CANONICAL, } from './constants.js';
+import { DEFAULT_OUTPUT_LIMIT, OMNIROUTE_DEFAULT_MODELS, OMNIROUTE_ENDPOINTS, MODEL_CACHE_TTL, REQUEST_TIMEOUT, PROVIDER_ALIAS_TO_CANONICAL, } from './constants.js';
 import { getModelsDevIndex, normalizeModelKey, getSubscriptionFallback, stripVariantSuffix, resolveProviderAlias, resolveModelAlias, } from './models-dev.js';
 import { enrichComboModels, clearComboCache, splitModelId } from './omniroute-combos.js';
 import { warn, debug } from './logger.js';
@@ -246,6 +246,22 @@ export function groupVariantModels(models) {
         result.push(merged);
     }
     return result;
+}
+/**
+ * Resolve the output-token limit for a model, falling back to
+ * `DEFAULT_OUTPUT_LIMIT` when the upstream reports no usable value.
+ *
+ * Non-positive and non-finite values count as "not reported". The old
+ * fallback (4096) starved reasoning models: with `reasoning_effort: high` the
+ * thinking budget alone could consume the whole cap, so the reply came back
+ * empty with the thinking truncated mid-word. The limit cannot be omitted
+ * instead — OpenCode rejects models whose `limit` lacks `output`.
+ */
+export function resolveOutputLimit(model) {
+    const value = model.maxTokens;
+    return typeof value === 'number' && Number.isFinite(value) && value > 0
+        ? value
+        : DEFAULT_OUTPUT_LIMIT;
 }
 /**
  * Fetch models from OmniRoute /v1/models endpoint

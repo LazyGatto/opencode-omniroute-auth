@@ -1,5 +1,6 @@
 import type { OmniRouteConfig, OmniRouteModel, OmniRouteModelVariant, OmniRouteModelsResponse } from './types.js';
 import {
+  DEFAULT_OUTPUT_LIMIT,
   OMNIROUTE_DEFAULT_MODELS,
   OMNIROUTE_ENDPOINTS,
   MODEL_CACHE_TTL,
@@ -312,6 +313,23 @@ export function groupVariantModels(models: OmniRouteModel[]): OmniRouteModel[] {
   }
 
   return result;
+}
+
+/**
+ * Resolve the output-token limit for a model, falling back to
+ * `DEFAULT_OUTPUT_LIMIT` when the upstream reports no usable value.
+ *
+ * Non-positive and non-finite values count as "not reported". The old
+ * fallback (4096) starved reasoning models: with `reasoning_effort: high` the
+ * thinking budget alone could consume the whole cap, so the reply came back
+ * empty with the thinking truncated mid-word. The limit cannot be omitted
+ * instead — OpenCode rejects models whose `limit` lacks `output`.
+ */
+export function resolveOutputLimit(model: OmniRouteModel): number {
+  const value = model.maxTokens;
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? value
+    : DEFAULT_OUTPUT_LIMIT;
 }
 
 /**

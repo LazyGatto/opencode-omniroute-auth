@@ -1,8 +1,8 @@
 import { homedir } from 'os';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
-import { OMNIROUTE_PROVIDER_ID, OMNIROUTE_DEFAULT_MODELS, OMNIROUTE_ENDPOINTS, DEFAULT_CONTEXT_LIMIT, DEFAULT_OUTPUT_LIMIT, PROVIDER_ALIAS_TO_CANONICAL, PROVIDER_DISPLAY_LABELS, } from './constants.js';
-import { buildReasoningVariants, fetchModels, resolveProviderAliasForMetadata } from './models.js';
+import { OMNIROUTE_PROVIDER_ID, OMNIROUTE_DEFAULT_MODELS, OMNIROUTE_ENDPOINTS, DEFAULT_CONTEXT_LIMIT, PROVIDER_ALIAS_TO_CANONICAL, PROVIDER_DISPLAY_LABELS, } from './constants.js';
+import { buildReasoningVariants, fetchModels, resolveOutputLimit, resolveProviderAliasForMetadata, } from './models.js';
 import { warn, debug } from './logger.js';
 import { sanitizeForLog } from './omniroute-combos.js';
 import { isRecord, normalizeChatUsageResponse, sanitizeChatPayload } from './http-sanitize.js';
@@ -738,6 +738,9 @@ function stripProviderPrefix(name) {
     }
     return name;
 }
+/**
+ * Map OmniRoute models to OpenCode V1 provider model records.
+ */
 function toProviderModels(models, baseUrl, providerNpm, modelNameDisplay) {
     const entries = models.map((model) => [
         model.id,
@@ -805,7 +808,7 @@ function toProviderModel(model, baseUrl, providerNpm, modelNameDisplay) {
         },
         limit: {
             context: model.contextWindow ?? DEFAULT_CONTEXT_LIMIT,
-            output: model.maxTokens ?? DEFAULT_OUTPUT_LIMIT,
+            output: resolveOutputLimit(model),
         },
         options: {},
         headers: {},

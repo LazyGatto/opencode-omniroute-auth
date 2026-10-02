@@ -85,10 +85,18 @@ export const MODEL_CACHE_TTL = 5 * 60 * 1000;
  */
 export const REQUEST_TIMEOUT = 30000;
 /**
- * Default model limits
+ * Default model context limit.
  */
 export const DEFAULT_CONTEXT_LIMIT = 128000;
-export const DEFAULT_OUTPUT_LIMIT = 4096;
+/**
+ * Default output-token limit for models whose upstream reports none.
+ *
+ * Mirrors OpenCode's own `OUTPUT_TOKEN_MAX` (32 000) so the fallback matches
+ * what OpenCode applies to models without a known limit. The field cannot
+ * simply be omitted: OpenCode rejects a model whose `limit` object lacks
+ * `output` (verified on 2.0.21 — such models fail with "Model unavailable").
+ */
+export const DEFAULT_OUTPUT_LIMIT = 32000;
 /**
  * models.dev enrichment defaults
  */

@@ -32,6 +32,17 @@ export declare function isProviderAlias(providerPrefix: string): boolean;
  */
 export declare function groupVariantModels(models: OmniRouteModel[]): OmniRouteModel[];
 /**
+ * Resolve the output-token limit for a model, falling back to
+ * `DEFAULT_OUTPUT_LIMIT` when the upstream reports no usable value.
+ *
+ * Non-positive and non-finite values count as "not reported". The old
+ * fallback (4096) starved reasoning models: with `reasoning_effort: high` the
+ * thinking budget alone could consume the whole cap, so the reply came back
+ * empty with the thinking truncated mid-word. The limit cannot be omitted
+ * instead — OpenCode rejects models whose `limit` lacks `output`.
+ */
+export declare function resolveOutputLimit(model: OmniRouteModel): number;
+/**
  * Fetch models from OmniRoute /v1/models endpoint
  * This is the CRITICAL FEATURE - dynamically fetches available models
  *
