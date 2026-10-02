@@ -16,11 +16,15 @@ import {
   OMNIROUTE_DEFAULT_MODELS,
   OMNIROUTE_ENDPOINTS,
   DEFAULT_CONTEXT_LIMIT,
-  DEFAULT_OUTPUT_LIMIT,
   PROVIDER_ALIAS_TO_CANONICAL,
   PROVIDER_DISPLAY_LABELS,
 } from './constants.js';
-import { buildReasoningVariants, fetchModels, resolveProviderAliasForMetadata } from './models.js';
+import {
+  buildReasoningVariants,
+  fetchModels,
+  resolveOutputLimit,
+  resolveProviderAliasForMetadata,
+} from './models.js';
 import { warn, debug } from './logger.js';
 import { sanitizeForLog } from './omniroute-combos.js';
 import { isRecord, normalizeChatUsageResponse, sanitizeChatPayload } from './http-sanitize.js';
@@ -957,6 +961,9 @@ function stripProviderPrefix(name: string): string {
   return name;
 }
 
+/**
+ * Map OmniRoute models to OpenCode V1 provider model records.
+ */
 function toProviderModels(
   models: OmniRouteModel[],
   baseUrl: string,
@@ -1036,7 +1043,7 @@ function toProviderModel(
     },
     limit: {
       context: model.contextWindow ?? DEFAULT_CONTEXT_LIMIT,
-      output: model.maxTokens ?? DEFAULT_OUTPUT_LIMIT,
+      output: resolveOutputLimit(model),
     },
     options: {},
     headers: {},

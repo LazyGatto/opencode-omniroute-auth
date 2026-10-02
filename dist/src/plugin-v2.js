@@ -1,5 +1,5 @@
-import { DEFAULT_CONTEXT_LIMIT, DEFAULT_OUTPUT_LIMIT, MODEL_CACHE_TTL, OMNIROUTE_CHAT_PROVIDER_PACKAGE, OMNIROUTE_DEFAULT_MODELS, OMNIROUTE_PLUGIN_ID, OMNIROUTE_PROVIDER_ID, OMNIROUTE_RESPONSES_PROVIDER_PACKAGE, } from './constants.js';
-import { buildReasoningVariants, fetchModels } from './models.js';
+import { DEFAULT_CONTEXT_LIMIT, MODEL_CACHE_TTL, OMNIROUTE_CHAT_PROVIDER_PACKAGE, OMNIROUTE_DEFAULT_MODELS, OMNIROUTE_PLUGIN_ID, OMNIROUTE_PROVIDER_ID, OMNIROUTE_RESPONSES_PROVIDER_PACKAGE, } from './constants.js';
+import { buildReasoningVariants, fetchModels, resolveOutputLimit } from './models.js';
 import { debug, describeError, warn } from './logger.js';
 import { sanitizeForLog } from './omniroute-combos.js';
 import { applyModelMetadataOverrides, createRuntimeConfig, formatModelDisplayName, getModelFamily, readAuthFromStore, } from './plugin.js';
@@ -82,7 +82,7 @@ export function toV2Model(model, config) {
         enabled: true,
         limit: {
             context: model.contextWindow ?? DEFAULT_CONTEXT_LIMIT,
-            output: model.maxTokens ?? DEFAULT_OUTPUT_LIMIT,
+            output: resolveOutputLimit(model),
         },
     };
 }

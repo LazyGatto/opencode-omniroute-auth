@@ -24,7 +24,6 @@
 import type { Model, Plugin, Provider } from '@opencode/plugin';
 import {
   DEFAULT_CONTEXT_LIMIT,
-  DEFAULT_OUTPUT_LIMIT,
   MODEL_CACHE_TTL,
   OMNIROUTE_CHAT_PROVIDER_PACKAGE,
   OMNIROUTE_DEFAULT_MODELS,
@@ -33,7 +32,7 @@ import {
   OMNIROUTE_RESPONSES_PROVIDER_PACKAGE,
 } from './constants.js';
 import type { OmniRouteConfig, OmniRouteModel } from './types.js';
-import { buildReasoningVariants, fetchModels } from './models.js';
+import { buildReasoningVariants, fetchModels, resolveOutputLimit } from './models.js';
 import { debug, describeError, warn } from './logger.js';
 import { sanitizeForLog } from './omniroute-combos.js';
 import {
@@ -183,7 +182,7 @@ export function toV2Model(model: OmniRouteModel, config: OmniRouteConfig): V2Mod
     enabled: true,
     limit: {
       context: model.contextWindow ?? DEFAULT_CONTEXT_LIMIT,
-      output: model.maxTokens ?? DEFAULT_OUTPUT_LIMIT,
+      output: resolveOutputLimit(model),
     },
   };
 }

@@ -175,7 +175,7 @@ test('toV2Model applies capability and variant edge cases', () => {
   assert.equal(plain.capabilities.tools, false);
   assert.deepEqual(plain.capabilities.input, ['text']);
   assert.deepEqual(plain.variants, []);
-  assert.deepEqual(plain.limit, { context: 128000, output: 4096 });
+  assert.deepEqual(plain.limit, { context: 128000, output: 32000 });
   assert.deepEqual(plain.cost, [{ input: 0, output: 0, cache: { read: 0, write: 0 } }]);
 
   // Explicit variant records win over the reasoning defaults.
@@ -198,6 +198,26 @@ test('toV2Model applies capability and variant edge cases', () => {
   assert.equal(byId.name, 'claude/sonnet');
 
   assert.equal(toV2Models([{ id: 'a' }, { id: 'b' }], config).length, 2);
+});
+
+test('toV2Model falls back to the OpenCode-equivalent output limit when maxTokens is unknown', () => {
+  const config = { baseUrl: DEAD_BASE_URL, apiKey: 'k', apiMode: 'chat' };
+
+  // Unknown maxTokens -> DEFAULT_OUTPUT_LIMIT (32000, OpenCode's own
+  // OUTPUT_TOKEN_MAX). The field cannot be omitted: OpenCode rejects models
+  // whose limit lacks output ("Model unavailable").
+  const unknown = toV2Model({ id: 'mimo-v2.6-pro', name: 'MiMo' }, config);
+  assert.deepEqual(unknown.limit, { context: 128000, output: 32000 });
+
+  // Known maxTokens passes through untouched.
+  const known = toV2Model({ id: 'mimo-v2.6-pro', name: 'MiMo', maxTokens: 131072 }, config);
+  assert.deepEqual(known.limit, { context: 128000, output: 131072 });
+
+  // Non-positive / non-finite values count as unknown.
+  for (const value of [0, -1, NaN, Infinity]) {
+    const bogus = toV2Model({ id: 'x', name: 'X', maxTokens: value }, config);
+    assert.equal(bogus.limit.output, 32000, `maxTokens=${value} must be treated as unknown`);
+  }
 });
 
 test('toV2Model builds variants from advertised effort_tiers and adds no-thinking', () => {

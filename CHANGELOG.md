@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.1.3] - 2026-10-02
+
+### Fixed
+
+- **Default output limit raised from 4096 to 32 000 and validated** — when a model reports no usable `maxTokens`/`max_output_tokens`, the mappers (V1 `toProviderModel`, V2 `toV2Model`) previously fell back to `DEFAULT_OUTPUT_LIMIT = 4096`. The guessed cap starved reasoning models: with `reasoning_effort: high` the thinking budget alone consumed 4095 of 4096 output tokens, so the reply came back empty with the thinking truncated mid-word (observed on `mimo-v2.6-pro` via OmniRoute `call_logs`). The fallback is now 32 000 — OpenCode's own `OUTPUT_TOKEN_MAX`, i.e. exactly what OpenCode applies to models without a known limit. Non-positive and non-finite `maxTokens` values (`0`, `-1`, `NaN`, `Infinity`) now count as "not reported" instead of leaking into the limit. Known limits (e.g. OmniRoute catalog `max_output_tokens`) still pass through unchanged.
+
+  The limit cannot simply be omitted: OpenCode rejects a model whose `limit` object lacks `output` (verified on OpenCode 2.0.21 — such models fail with `Model unavailable`), and even a model with no `limit` at all still gets `max_completion_tokens: 32000` on the wire. (`src/models.ts`, `src/plugin.ts`, `src/plugin-v2.ts`, `src/constants.ts`)
+
+### Tests
+
+- Regression coverage: known `maxTokens` passes through, unknown falls back to 32 000, and non-positive/non-finite values count as unknown. (`test/plugin.test.mjs`, `test/plugin-v2.test.mjs`)
+
 ## [2.1.2] - 2026-09-28
 
 ### Fixed

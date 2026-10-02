@@ -641,6 +641,44 @@ test('auth loader applies user modelMetadata override to provider models', async
   assert.equal(provider.models['codex/gpt-5.5'].limit.context, 512000);
 });
 
+test('provider models fall back to the OpenCode-equivalent output limit when the model reports none', async () => {
+  const plugin = await OmniRouteAuthPlugin({});
+
+  global.fetch = async (input) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url.endsWith('/v1/models')) {
+      return new Response(
+        JSON.stringify({
+          object: 'list',
+          data: [
+            { id: 'cx/gpt-5.5', name: 'GPT-5.5', contextWindow: 512000, maxTokens: 65536 },
+            { id: 'cx/gpt-5.5-mini', name: 'GPT-5.5 Mini', contextWindow: 200000 },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
+  const provider = {
+    options: {
+      baseURL: getDummyBaseUrl(20134),
+      apiMode: 'chat',
+    },
+    models: {},
+  };
+
+  await plugin.auth.loader(async () => ({ type: 'api', key: 'secret-key' }), provider);
+
+  assert.equal(provider.models['codex/gpt-5.5'].limit.output, 65536);
+  assert.deepEqual(provider.models['codex/gpt-5.5-mini'].limit, { context: 200000, output: 32000 });
+});
+
 test('gemini tool schema payload is sanitized before forwarding', async () => {
   const plugin = await OmniRouteAuthPlugin({});
   let forwardedBody;
