@@ -90,7 +90,20 @@ export async function fetchComboData(config) {
 /**
  * Clear the combo cache
  */
+/**
+ * Warn-once bookkeeping for per-combo resolution problems. Without it every
+ * catalog refresh repeated the same unresolvable-combo warnings (14k+ lines
+ * observed for a combo whose member is not in models.dev).
+ */
+const warnedComboIssues = new Set();
+function warnOnceCombo(key, message) {
+    if (warnedComboIssues.has(key))
+        return;
+    warnedComboIssues.add(key);
+    warn(message);
+}
 export function clearComboCache() {
+    warnedComboIssues.clear();
     comboCache = null;
     debug('Combo cache cleared');
 }
@@ -234,10 +247,10 @@ export async function calculateModelCapabilities(model, config, modelsDevIndex) 
         }
     }
     if (unresolvedModels.length > 0) {
-        warn(`Could not resolve ${unresolvedModels.length} underlying models for "${sanitizeForLog(model.id)}": ${unresolvedModels.map(sanitizeForLog).join(', ')}`);
+        warnOnceCombo(`unresolved:${model.id}`, `Could not resolve ${unresolvedModels.length} underlying models for "${sanitizeForLog(model.id)}": ${unresolvedModels.map(sanitizeForLog).join(', ')}`);
     }
     if (resolvedModels.length === 0) {
-        warn(`No models.dev matches found for combo "${sanitizeForLog(model.id)}"`);
+        warnOnceCombo(`nomatch:${model.id}`, `No models.dev matches found for combo "${sanitizeForLog(model.id)}"`);
         return {};
     }
     debug(`Resolved ${resolvedModels.length}/${underlyingModels.length} underlying models for "${sanitizeForLog(model.id)}"`);
@@ -303,4 +316,9 @@ export async function enrichComboModels(models, config, modelsDevIndex) {
         };
     }));
 }
+/** Test-only surface for the warn-once bookkeeping. */
+export const __testing = {
+    comboWarnedCount: () => warnedComboIssues.size,
+    warnOnce: warnOnceCombo,
+};
 //# sourceMappingURL=omniroute-combos.js.map

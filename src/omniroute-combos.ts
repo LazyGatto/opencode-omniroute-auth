@@ -155,7 +155,21 @@ export async function fetchComboData(
 /**
  * Clear the combo cache
  */
+/**
+ * Warn-once bookkeeping for per-combo resolution problems. Without it every
+ * catalog refresh repeated the same unresolvable-combo warnings (14k+ lines
+ * observed for a combo whose member is not in models.dev).
+ */
+const warnedComboIssues = new Set<string>();
+
+function warnOnceCombo(key: string, message: string): void {
+  if (warnedComboIssues.has(key)) return;
+  warnedComboIssues.add(key);
+  warn(message);
+}
+
 export function clearComboCache(): void {
+  warnedComboIssues.clear();
   comboCache = null;
   debug('Combo cache cleared');
 }
@@ -328,13 +342,17 @@ export async function calculateModelCapabilities(
   }
 
   if (unresolvedModels.length > 0) {
-    warn(
+    warnOnceCombo(
+      `unresolved:${model.id}`,
       `Could not resolve ${unresolvedModels.length} underlying models for "${sanitizeForLog(model.id)}": ${unresolvedModels.map(sanitizeForLog).join(', ')}`,
     );
   }
 
   if (resolvedModels.length === 0) {
-    warn(`No models.dev matches found for combo "${sanitizeForLog(model.id)}"`);
+    warnOnceCombo(
+      `nomatch:${model.id}`,
+      `No models.dev matches found for combo "${sanitizeForLog(model.id)}"`,
+    );
     return {};
   }
 
@@ -420,3 +438,9 @@ export async function enrichComboModels(
     }),
   );
 }
+
+/** Test-only surface for the warn-once bookkeeping. */
+export const __testing = {
+  comboWarnedCount: (): number => warnedComboIssues.size,
+  warnOnce: warnOnceCombo,
+};
