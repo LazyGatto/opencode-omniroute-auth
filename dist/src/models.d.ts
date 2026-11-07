@@ -1,5 +1,27 @@
 import type { OmniRouteConfig, OmniRouteModel, OmniRouteModelVariant } from './types.js';
 /**
+ * Persistent last-good model cache.
+ *
+ * The in-memory Map dies with every OpenCode restart, so a cold start while the
+ * gateway (or DNS) is unreachable used to fall back to the static
+ * OMNIROUTE_DEFAULT_MODELS — a short list that does not contain this
+ * deployment's models. Sessions pinned to them then failed to drain with
+ * "Model unavailable: omniroute/<model>" (log evidence 2026-11-03..06: 732x
+ * ENOTFOUND + 7 failed drains). Successful fetches are persisted so the
+ * fallback serves the real catalog instead.
+ *
+ * Override the location with OMNIROUTE_MODEL_CACHE_FILE (used by tests).
+ */
+export declare const DISK_CACHE_PATH: string;
+declare function readDiskCache(cacheKey: string): OmniRouteModel[] | null;
+declare function writeDiskCache(cacheKey: string, models: OmniRouteModel[]): void;
+/** Network-level failures worth one more attempt; HTTP 4xx and timeouts are not. */
+declare function isRetryableFetchError(error: unknown): boolean;
+/**
+ * Generate a cache key for a given configuration
+ */
+declare function getCacheKey(config: OmniRouteConfig, apiKey: string): string;
+/**
  * Build the reasoning variants for a model.
  *
  * OmniRoute advertises the real tiers in `capabilities.effort_tiers` (e.g.
@@ -78,4 +100,14 @@ export declare function isCacheValid(config: OmniRouteConfig, apiKey: string): b
  * @returns Array of available models
  */
 export declare function refreshModels(config: OmniRouteConfig, apiKey: string): Promise<OmniRouteModel[]>;
+/** Test-only surface: key derivation and disk cache paths for the resilience tests. */
+export declare const __testing: {
+    getCacheKey: typeof getCacheKey;
+    DISK_CACHE_PATH: string;
+    readDiskCache: typeof readDiskCache;
+    writeDiskCache: typeof writeDiskCache;
+    isRetryableFetchError: typeof isRetryableFetchError;
+    FETCH_RETRY_DELAYS_MS: number[];
+};
+export {};
 //# sourceMappingURL=models.d.ts.map

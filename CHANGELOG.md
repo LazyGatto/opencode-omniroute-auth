@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.2.0] - 2026-11-07
+
+### Fixed
+
+- **Cold-start catalog loss no longer breaks pinned sessions** — the model cache was in-memory only, so every OpenCode restart started cold. When the gateway (or its DNS) was unreachable at that moment, `fetchModels` fell back to the static `OMNIROUTE_DEFAULT_MODELS`, which do not contain the deployment's models; sessions pinned to `omniroute/<model>` then failed their drain with `ModelUnavailableError: Model unavailable: omniroute/<model>`. Successful fetches are now persisted to `~/.cache/opencode/omniroute-models.json` (override with `OMNIROUTE_MODEL_CACHE_FILE`) and served back on a cold start with no network; the in-memory cache is seeded from it. When even the persisted catalog is missing the plugin now warns loudly instead of silently serving defaults. (`src/models.ts`)
+  Observed on a production instance 2026-11-03..06: `732x ENOTFOUND omni.cheburlan.cc` during catalog refresh and 7 failed session drains, each right after an OpenCode restart — the gateway itself was up the whole time.
+
+- **Transient network errors are retried** — model fetches now retry up to three times (1 s / 2 s backoff) on DNS/connection-level failures (`ENOTFOUND`, `EAI_AGAIN`, `ECONNRESET`, …) before falling back to the cache, which covers short DNS blips during network switches. HTTP error statuses and request timeouts are not retried. (`src/models.ts`)
+
+- **Combo resolution warnings are emitted once** — an unresolvable combo member (e.g. a custom node model absent from models.dev) used to log the same two warnings on every catalog refresh (14k+ lines observed for one combo). They are now emitted once per combo until the combo cache is cleared. (`src/omniroute-combos.ts`)
+
 ## [2.1.3] - 2026-10-02
 
 ### Fixed

@@ -33,9 +33,7 @@ export interface OmniRouteCombosResponse {
  * Falls back to /api/combos on HTTP 404 for older OmniRoute versions.
  */
 export declare function fetchComboData(config: OmniRouteConfig): Promise<Map<string, OmniRouteCombo> | null>;
-/**
- * Clear the combo cache
- */
+declare function warnOnceCombo(key: string, message: string): void;
 export declare function clearComboCache(): void;
 /**
  * Resolve a model ID to its underlying models
@@ -70,4 +68,10 @@ export declare function isComboModel(model: OmniRouteModel): boolean;
  * This should be called after models.dev enrichment
  */
 export declare function enrichComboModels(models: OmniRouteModel[], config: OmniRouteConfig, modelsDevIndex: ModelsDevIndex | null): Promise<OmniRouteModel[]>;
+/** Test-only surface for the warn-once bookkeeping. */
+export declare const __testing: {
+    comboWarnedCount: () => number;
+    warnOnce: typeof warnOnceCombo;
+};
+export {};
 //# sourceMappingURL=omniroute-combos.d.ts.map

@@ -18,6 +18,9 @@ import {
 import type { ModelsDevIndex, ModelsDevModel } from './models-dev.js';
 import { enrichComboModels, clearComboCache, splitModelId } from './omniroute-combos.js';
 import { warn, debug } from './logger.js';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { homedir } from 'node:os';
 
 /**
  * Model cache entry
@@ -31,6 +34,72 @@ interface ModelCache {
  * In-memory model cache keyed by endpoint and API key
  */
 const modelCache = new Map<string, ModelCache>();
+
+/**
+ * Persistent last-good model cache.
+ *
+ * The in-memory Map dies with every OpenCode restart, so a cold start while the
+ * gateway (or DNS) is unreachable used to fall back to the static
+ * OMNIROUTE_DEFAULT_MODELS — a short list that does not contain this
+ * deployment's models. Sessions pinned to them then failed to drain with
+ * "Model unavailable: omniroute/<model>" (log evidence 2026-11-03..06: 732x
+ * ENOTFOUND + 7 failed drains). Successful fetches are persisted so the
+ * fallback serves the real catalog instead.
+ *
+ * Override the location with OMNIROUTE_MODEL_CACHE_FILE (used by tests).
+ */
+export const DISK_CACHE_PATH =
+  process.env.OMNIROUTE_MODEL_CACHE_FILE ||
+  join(
+    process.env.XDG_CACHE_HOME || join(homedir(), '.cache'),
+    'opencode',
+    'omniroute-models.json',
+  );
+
+function readDiskCache(cacheKey: string): OmniRouteModel[] | null {
+  try {
+    if (!existsSync(DISK_CACHE_PATH)) return null;
+    const parsed: unknown = JSON.parse(readFileSync(DISK_CACHE_PATH, 'utf8'));
+    const entry = (parsed as Record<string, { models?: unknown }>)?.[cacheKey];
+    if (!entry || !Array.isArray(entry.models)) return null;
+    return entry.models as OmniRouteModel[];
+  } catch {
+    return null; // missing or corrupt file: treat as a cold cache
+  }
+}
+
+function writeDiskCache(cacheKey: string, models: OmniRouteModel[]): void {
+  try {
+    mkdirSync(dirname(DISK_CACHE_PATH), { recursive: true });
+    let all: Record<string, { savedAt: number; models: OmniRouteModel[] }> = {};
+    if (existsSync(DISK_CACHE_PATH)) {
+      try {
+        const parsed: unknown = JSON.parse(readFileSync(DISK_CACHE_PATH, 'utf8'));
+        if (parsed && typeof parsed === 'object') all = parsed as typeof all;
+      } catch {
+        /* corrupt file: start from an empty map */
+      }
+    }
+    all[cacheKey] = { savedAt: Date.now(), models };
+    const tmp = `${DISK_CACHE_PATH}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify(all), { encoding: 'utf8', mode: 0o600 });
+    renameSync(tmp, DISK_CACHE_PATH);
+  } catch (error) {
+    debug(`Persisting model cache failed: ${error}`);
+  }
+}
+
+/** Network-level failures worth one more attempt; HTTP 4xx and timeouts are not. */
+function isRetryableFetchError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  if (error.name === 'AbortError') return false; // request budget already spent
+  return /ENOTFOUND|EAI_AGAIN|ECONNRESET|ECONNREFUSED|ETIMEDOUT|fetch failed|network|socket/i.test(
+    error.message,
+  );
+}
+
+/** Delays before each retry attempt (first element is the immediate try). */
+const FETCH_RETRY_DELAYS_MS = [0, 1000, 2000];
 
 /**
  * Generate a cache key for a given configuration
@@ -372,15 +441,35 @@ export async function fetchModels(
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
   try {
-    const response = await fetch(modelsUrl, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      signal: controller.signal,
-    });
+    // Transient network failures (DNS blips during network switches, brief
+    // outages) are retried with a small backoff before we fall through to the
+    // cache fallbacks below; the outer controller still bounds the total budget.
+    let response: Response | undefined;
+    let lastError: unknown;
+    for (let attempt = 0; attempt < FETCH_RETRY_DELAYS_MS.length; attempt++) {
+      const delay = FETCH_RETRY_DELAYS_MS[attempt];
+      if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+      try {
+        response = await fetch(modelsUrl, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          signal: controller.signal,
+        });
+        lastError = undefined;
+        break;
+      } catch (error) {
+        lastError = error;
+        if (!isRetryableFetchError(error) || attempt === FETCH_RETRY_DELAYS_MS.length - 1) {
+          throw error;
+        }
+        debug(`Transient model fetch failure, retrying in ${FETCH_RETRY_DELAYS_MS[attempt + 1]}ms: ${error}`);
+      }
+    }
+    if (!response) throw lastError ?? new Error('model fetch failed without a response');
 
     if (!response.ok) {
       // Sanitize error - only log status, not response body
@@ -419,11 +508,12 @@ export async function fetchModels(
     const groupedModels = groupVariantModels(dedupedModels);
     const models = await enrichModelMetadata(groupedModels, config);
 
-    // Update cache
+    // Update caches
     modelCache.set(cacheKey, {
       models,
       timestamp: Date.now(),
     });
+    writeDiskCache(cacheKey, models);
 
     debug(`Successfully fetched ${models.length} models`);
     return models;
@@ -437,8 +527,20 @@ export async function fetchModels(
       return cached.models;
     }
 
-    // Return default models as last resort
-    debug('Returning default models as fallback');
+    // Last resort: the persisted catalog from the last successful fetch — a cold
+    // start must not drop the session's pinned models just because the gateway
+    // was unreachable this second.
+    const persisted = readDiskCache(cacheKey);
+    if (persisted && persisted.length > 0) {
+      debug(`Returning persisted models as fallback (${persisted.length})`);
+      modelCache.set(cacheKey, { models: persisted, timestamp: Date.now() });
+      return persisted;
+    }
+
+    // Static defaults do NOT contain this deployment's models; say it loudly.
+    warn(
+      'Serving default models: gateway unreachable and no persisted catalog on disk — sessions pinned to gateway models will fail with "Model unavailable"',
+    );
     return config.defaultModels || OMNIROUTE_DEFAULT_MODELS;
   } finally {
     // Always clear the timeout to prevent memory leaks
@@ -631,3 +733,13 @@ function lookupModelsDevModel(
   return undefined;
 }
 
+
+/** Test-only surface: key derivation and disk cache paths for the resilience tests. */
+export const __testing = {
+  getCacheKey,
+  DISK_CACHE_PATH,
+  readDiskCache,
+  writeDiskCache,
+  isRetryableFetchError,
+  FETCH_RETRY_DELAYS_MS,
+};
