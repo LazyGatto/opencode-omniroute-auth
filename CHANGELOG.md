@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [2.2.0] - 2026-11-07
 
+### Added
+
+- **`headers` provider option** — extra HTTP headers attached to every request to the OmniRoute base URL, in addition to `Authorization` and `Content-Type`. Useful when the gateway is fronted by a reverse proxy that requires its own credentials (e.g. Cloudflare Access service tokens, `{env:VAR}` templates supported). Contributed by @Rahulsharma0810 (#1). (`src/plugin.ts`, `src/types.ts`)
+
 ### Fixed
 
 - **Cold-start catalog loss no longer breaks pinned sessions** — the model cache was in-memory only, so every OpenCode restart started cold. When the gateway (or its DNS) was unreachable at that moment, `fetchModels` fell back to the static `OMNIROUTE_DEFAULT_MODELS`, which do not contain the deployment's models; sessions pinned to `omniroute/<model>` then failed their drain with `ModelUnavailableError: Model unavailable: omniroute/<model>`. Successful fetches are now persisted to `~/.cache/opencode/omniroute-models.json` (override with `OMNIROUTE_MODEL_CACHE_FILE`) and served back on a cold start with no network; the in-memory cache is seeded from it. When even the persisted catalog is missing the plugin now warns loudly instead of silently serving defaults. (`src/models.ts`)
