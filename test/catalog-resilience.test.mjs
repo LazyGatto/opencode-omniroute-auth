@@ -79,6 +79,15 @@ test('a transient DNS failure is retried before falling back', async () => {
   );
 });
 
+test('persisted catalog round-trips through the disk cache helpers', () => {
+  models.clearModelCache();
+  const cacheKey = models.__testing.getCacheKey(CONFIG, CONFIG.apiKey);
+  const payload = [{ id: 'bulk', name: 'bulk' }];
+  models.__testing.writeDiskCache(cacheKey, payload);
+  assert.deepEqual(models.__testing.readDiskCache(cacheKey), payload);
+  assert.equal(models.__testing.readDiskCache('missing-key'), null);
+});
+
 test('combo resolution warnings are emitted once per key', () => {
   combos.clearComboCache();
   const before = combos.__testing.comboWarnedCount();

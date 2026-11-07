@@ -513,7 +513,9 @@ export async function fetchModels(
       models,
       timestamp: Date.now(),
     });
-    writeDiskCache(cacheKey, models);
+    // Never persist during `node --test` runs: test fetches must not pollute the
+    // real cache file (~/.cache/opencode/omniroute-models.json).
+    if (!process.env.NODE_TEST_CONTEXT) writeDiskCache(cacheKey, models);
 
     debug(`Successfully fetched ${models.length} models`);
     return models;
