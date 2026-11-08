@@ -32,7 +32,7 @@ import {
   OMNIROUTE_RESPONSES_PROVIDER_PACKAGE,
 } from './constants.js';
 import type { OmniRouteConfig, OmniRouteModel } from './types.js';
-import { buildReasoningVariants, fetchModels, resolveOutputLimit } from './models.js';
+import { buildReasoningVariants, fetchModels, getStartupModels, resolveOutputLimit } from './models.js';
 import { debug, describeError, warn } from './logger.js';
 import { sanitizeForLog } from './omniroute-combos.js';
 import {
@@ -251,9 +251,13 @@ export async function setup(ctx: Context): Promise<() => Promise<void>> {
   // The plugin owns the provider: it registers driver, settings, and models.
   const config = createRuntimeConfig(options, '');
 
+  const apiKey = await resolveApiKey(ctx);
   const state: { apiKey: string | undefined; models: V2ModelInfo[] } = {
-    apiKey: await resolveApiKey(ctx),
-    models: toV2Models(OMNIROUTE_DEFAULT_MODELS, config),
+    apiKey,
+    // Seed from memory/persisted catalog synchronously: OpenCode drains sessions
+    // BEFORE our async refresh lands, and static defaults do not contain the
+    // gateway's models (ModelUnavailableError during that window).
+    models: toV2Models(getStartupModels(config, apiKey ?? ''), config),
   };
 
   // 1. Integration: display name + key auth method so `/connect omniroute`

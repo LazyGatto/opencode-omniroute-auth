@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync, rmSync } from 'fs';
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -646,4 +646,45 @@ test('normalizeChatUsageResponse passes through non-chat responses', async () =>
   const usage = JSON.parse(firstLine.slice('data: '.length)).usage;
   assert.equal(usage.prompt_tokens, 5);
   assert.equal(usage.total_tokens, 7);
+});
+
+test('setup seeds provider models from the persisted catalog (no default-only window)', async () => {
+  const dir = mkdtempSync(join(tmpdir(), `omniroute-v2-seed-${Date.now()}-${Math.random().toString(16).slice(2)}`));
+  const cacheFile = join(dir, 'opencode', 'omniroute-models.json');
+  mkdirSync(join(dir, 'opencode'), { recursive: true });
+
+  const options = { baseURL: DEAD_BASE_URL, apiMode: 'chat' };
+  const { createRuntimeConfig } = await import('../dist/src/plugin.js');
+  const config = createRuntimeConfig(options, 'env-key');
+  const seed = [
+    { id: 'workhorse', name: 'workhorse' },
+    { id: 'deepseek/deepseek-flash', name: 'deepseek/deepseek-flash' },
+  ];
+
+  const restore = withAuthEnv({ envKey: 'env-key' });
+  process.env.OMNIROUTE_MODEL_CACHE_FILE = cacheFile;
+
+  try {
+    const { __testing } = await import('../dist/src/models.js');
+    const cacheKey = __testing.getCacheKey(config, 'env-key');
+    writeFileSync(cacheFile, JSON.stringify({ [cacheKey]: { savedAt: Date.now(), models: seed } }));
+
+    // The same key the setup will resolve from the credential store —
+    // the persisted-cache key includes the resolved apiKey.
+    const { ctx, calls } = makeCtx({
+      options,
+      connection: { type: 'key', key: 'env-key' },
+      credential: { type: 'key', key: 'env-key' },
+    });
+    await setup(ctx);
+
+    const published = calls.added?.models ?? calls.modelsSet?.models ?? [];
+    const ids = published.map((m) => m.id);
+    assert.ok(ids.includes('workhorse'), 'seeded gateway model must be in the first publication');
+    assert.ok(ids.includes('deepseek/deepseek-flash'), 'seeded gateway model must be in the first publication');
+  } finally {
+    restore();
+    delete process.env.OMNIROUTE_MODEL_CACHE_FILE;
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

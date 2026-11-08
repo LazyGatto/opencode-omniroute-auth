@@ -48,18 +48,23 @@ const modelCache = new Map<string, ModelCache>();
  *
  * Override the location with OMNIROUTE_MODEL_CACHE_FILE (used by tests).
  */
-export const DISK_CACHE_PATH =
-  process.env.OMNIROUTE_MODEL_CACHE_FILE ||
-  join(
-    process.env.XDG_CACHE_HOME || join(homedir(), '.cache'),
-    'opencode',
-    'omniroute-models.json',
+/** Resolved on every call so tests (and ops) can override the location at runtime. */
+export function getDiskCachePath(): string {
+  return (
+    process.env.OMNIROUTE_MODEL_CACHE_FILE ||
+    join(
+      process.env.XDG_CACHE_HOME || join(homedir(), '.cache'),
+      'opencode',
+      'omniroute-models.json',
+    )
   );
+}
 
 function readDiskCache(cacheKey: string): OmniRouteModel[] | null {
   try {
-    if (!existsSync(DISK_CACHE_PATH)) return null;
-    const parsed: unknown = JSON.parse(readFileSync(DISK_CACHE_PATH, 'utf8'));
+    const path = getDiskCachePath();
+    if (!existsSync(path)) return null;
+    const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'));
     const entry = (parsed as Record<string, { models?: unknown }>)?.[cacheKey];
     if (!entry || !Array.isArray(entry.models)) return null;
     return entry.models as OmniRouteModel[];
@@ -70,20 +75,21 @@ function readDiskCache(cacheKey: string): OmniRouteModel[] | null {
 
 function writeDiskCache(cacheKey: string, models: OmniRouteModel[]): void {
   try {
-    mkdirSync(dirname(DISK_CACHE_PATH), { recursive: true });
+    const path = getDiskCachePath();
+    mkdirSync(dirname(path), { recursive: true });
     let all: Record<string, { savedAt: number; models: OmniRouteModel[] }> = {};
-    if (existsSync(DISK_CACHE_PATH)) {
+    if (existsSync(path)) {
       try {
-        const parsed: unknown = JSON.parse(readFileSync(DISK_CACHE_PATH, 'utf8'));
+        const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'));
         if (parsed && typeof parsed === 'object') all = parsed as typeof all;
       } catch {
         /* corrupt file: start from an empty map */
       }
     }
     all[cacheKey] = { savedAt: Date.now(), models };
-    const tmp = `${DISK_CACHE_PATH}.${process.pid}.tmp`;
+    const tmp = `${path}.${process.pid}.tmp`;
     writeFileSync(tmp, JSON.stringify(all), { encoding: 'utf8', mode: 0o600 });
-    renameSync(tmp, DISK_CACHE_PATH);
+    renameSync(tmp, path);
   } catch (error) {
     debug(`Persisting model cache failed: ${error}`);
   }
@@ -736,10 +742,37 @@ function lookupModelsDevModel(
 }
 
 
+/**
+ * Synchronous catalog for provider setup.
+ *
+ * OpenCode drains queued session messages ~30-80ms BEFORE the plugin's async
+ * model refresh emits provider.updated/model.updated (observed in logs:
+ * drain at T, catalog events at T+30..80ms). The provider therefore published
+ * the static OMNIROUTE_DEFAULT_MODELS during that window and sessions pinned to
+ * gateway models failed with ModelUnavailableError. Seed from memory, then from
+ * the persisted catalog, so the FIRST publication already lists real models.
+ */
+export function getStartupModels(config: OmniRouteConfig, apiKey: string): OmniRouteModel[] {
+  const cacheKey = getCacheKey(config, apiKey);
+  const cached = modelCache.get(cacheKey);
+  if (cached && cached.models.length > 0) {
+    debug(`Startup catalog: ${cached.models.length} models from memory`);
+    return cached.models;
+  }
+  const persisted = readDiskCache(cacheKey);
+  if (persisted && persisted.length > 0) {
+    modelCache.set(cacheKey, { models: persisted, timestamp: Date.now() });
+    debug(`Startup catalog: ${persisted.length} models from persisted cache`);
+    return persisted;
+  }
+  debug('Startup catalog: no persisted cache, using built-in defaults');
+  return config.defaultModels || OMNIROUTE_DEFAULT_MODELS;
+}
+
 /** Test-only surface: key derivation and disk cache paths for the resilience tests. */
 export const __testing = {
   getCacheKey,
-  DISK_CACHE_PATH,
+  getDiskCachePath,
   readDiskCache,
   writeDiskCache,
   isRetryableFetchError,

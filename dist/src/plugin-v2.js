@@ -1,5 +1,5 @@
-import { DEFAULT_CONTEXT_LIMIT, MODEL_CACHE_TTL, OMNIROUTE_CHAT_PROVIDER_PACKAGE, OMNIROUTE_DEFAULT_MODELS, OMNIROUTE_PLUGIN_ID, OMNIROUTE_PROVIDER_ID, OMNIROUTE_RESPONSES_PROVIDER_PACKAGE, } from './constants.js';
-import { buildReasoningVariants, fetchModels, resolveOutputLimit } from './models.js';
+import { DEFAULT_CONTEXT_LIMIT, MODEL_CACHE_TTL, OMNIROUTE_CHAT_PROVIDER_PACKAGE, OMNIROUTE_PLUGIN_ID, OMNIROUTE_PROVIDER_ID, OMNIROUTE_RESPONSES_PROVIDER_PACKAGE, } from './constants.js';
+import { buildReasoningVariants, fetchModels, getStartupModels, resolveOutputLimit } from './models.js';
 import { debug, describeError, warn } from './logger.js';
 import { sanitizeForLog } from './omniroute-combos.js';
 import { applyModelMetadataOverrides, createRuntimeConfig, formatModelDisplayName, getModelFamily, readAuthFromStore, } from './plugin.js';
@@ -139,9 +139,13 @@ export async function setup(ctx) {
     // Options come from the `plugins` config entry, not the provider config.
     // The plugin owns the provider: it registers driver, settings, and models.
     const config = createRuntimeConfig(options, '');
+    const apiKey = await resolveApiKey(ctx);
     const state = {
-        apiKey: await resolveApiKey(ctx),
-        models: toV2Models(OMNIROUTE_DEFAULT_MODELS, config),
+        apiKey,
+        // Seed from memory/persisted catalog synchronously: OpenCode drains sessions
+        // BEFORE our async refresh lands, and static defaults do not contain the
+        // gateway's models (ModelUnavailableError during that window).
+        models: toV2Models(getStartupModels(config, apiKey ?? ''), config),
     };
     // 1. Integration: display name + key auth method so `/connect omniroute`
     //    offers an API key form and the credential store is addressable.

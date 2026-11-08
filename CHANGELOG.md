@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.2.1] - 2026-11-07
+
+### Fixed
+
+- **The provider now publishes the real catalog at setup, not static defaults** — OpenCode drains queued session messages ~30–80 ms BEFORE the plugin's async model refresh emits `provider.updated` / `model.updated` (measured in production logs). During that window the provider published the static `OMNIROUTE_DEFAULT_MODELS`, and sessions pinned to gateway models failed to drain with `ModelUnavailableError: Model unavailable: omniroute/<model>` — even with #16752 and #17269 in place. `setup()` now seeds the provider synchronously from the in-memory cache and then the persisted catalog (`getStartupModels`), so the first publication already lists the gateway's models. Also: the disk cache path is resolved lazily at runtime (allows `OMNIROUTE_MODEL_CACHE_FILE` overrides from tests/ops). (`src/models.ts`, `src/plugin-v2.ts`, new test in `test/plugin-v2.test.mjs`)
 ## [2.2.0] - 2026-11-07
 
 ### Added

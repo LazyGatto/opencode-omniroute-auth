@@ -12,7 +12,8 @@ import type { OmniRouteConfig, OmniRouteModel, OmniRouteModelVariant } from './t
  *
  * Override the location with OMNIROUTE_MODEL_CACHE_FILE (used by tests).
  */
-export declare const DISK_CACHE_PATH: string;
+/** Resolved on every call so tests (and ops) can override the location at runtime. */
+export declare function getDiskCachePath(): string;
 declare function readDiskCache(cacheKey: string): OmniRouteModel[] | null;
 declare function writeDiskCache(cacheKey: string, models: OmniRouteModel[]): void;
 /** Network-level failures worth one more attempt; HTTP 4xx and timeouts are not. */
@@ -100,10 +101,21 @@ export declare function isCacheValid(config: OmniRouteConfig, apiKey: string): b
  * @returns Array of available models
  */
 export declare function refreshModels(config: OmniRouteConfig, apiKey: string): Promise<OmniRouteModel[]>;
+/**
+ * Synchronous catalog for provider setup.
+ *
+ * OpenCode drains queued session messages ~30-80ms BEFORE the plugin's async
+ * model refresh emits provider.updated/model.updated (observed in logs:
+ * drain at T, catalog events at T+30..80ms). The provider therefore published
+ * the static OMNIROUTE_DEFAULT_MODELS during that window and sessions pinned to
+ * gateway models failed with ModelUnavailableError. Seed from memory, then from
+ * the persisted catalog, so the FIRST publication already lists real models.
+ */
+export declare function getStartupModels(config: OmniRouteConfig, apiKey: string): OmniRouteModel[];
 /** Test-only surface: key derivation and disk cache paths for the resilience tests. */
 export declare const __testing: {
     getCacheKey: typeof getCacheKey;
-    DISK_CACHE_PATH: string;
+    getDiskCachePath: typeof getDiskCachePath;
     readDiskCache: typeof readDiskCache;
     writeDiskCache: typeof writeDiskCache;
     isRetryableFetchError: typeof isRetryableFetchError;
