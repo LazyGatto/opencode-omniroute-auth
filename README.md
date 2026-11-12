@@ -2,9 +2,11 @@
 
 [![npm](https://img.shields.io/npm/v/@lazygatto/opencode-omniroute-auth.svg)](https://www.npmjs.com/package/@lazygatto/opencode-omniroute-auth)
 
-🔌 Authentication plugin for [OpenCode](https://opencode.ai) to connect to an [OmniRoute](https://omniroute.ai) API instance.
+🔌 **Server-side authentication plugin** for [OpenCode](https://opencode.ai) to connect to an [OmniRoute](https://omniroute.ai) API instance.
 
 This is a fork of [Alph4d0g/opencode-omniroute-auth](https://github.com/Alph4d0g/opencode-omniroute-auth) (base: `v1.2.3`), extended with **OpenCode V2** support. Install it from npm as `@lazygatto/opencode-omniroute-auth`, or straight from this repo — the upstream npm package (`opencode-omniroute-auth@1.x`) only works on V1.
+
+The plugin is **server-side only**: it runs in the OpenCode server process (`setup(ctx)` on V2, `server(ctx)` on V1) and ships **no TUI/JSX components**. Installing it from npm is therefore the fully supported route — the known OpenCode npm-cache issue that forces rebuilds for TUI plugins ([anomalyco/opencode#39986](https://github.com/anomalyco/opencode/issues/39986)) does **not** apply to this plugin.
 
 ## Compatibility
 
@@ -44,7 +46,7 @@ The same release is available two ways — **use the package name that matches t
 npm install @lazygatto/opencode-omniroute-auth
 ```
 
-Published as an **unofficial** fork under the `@lazygatto` scope. Use `"package": "@lazygatto/opencode-omniroute-auth"` in your config.
+Published as an **unofficial** fork under the `@lazygatto` scope. Use `"package": "@lazygatto/opencode-omniroute-auth"` in your config. Since the plugin is server-side (no TUI assets), this npm route is the recommended one and works out of the box.
 
 ### From GitHub (git spec)
 
@@ -67,7 +69,7 @@ This route keeps the upstream package name, so use `"package": "opencode-omnirou
 This installs the latest commit of `main`. To pin a release, add a ref:
 
 ```bash
-npm install github:LazyGatto/opencode-omniroute-auth#v2.1.2
+npm install github:LazyGatto/opencode-omniroute-auth#v2.2.1
 ```
 
 **Where to install.** OpenCode resolves plugin packages by walking up the directory tree from the config it loads, looking in `node_modules`. Run the install command in:
@@ -147,7 +149,7 @@ Then run `/connect omniroute` to store your key in `~/.local/share/opencode/auth
 
 ## Verifying the installation
 
-1. **Plugin loaded** — no `Plugin must export a default definition` / `failed to load plugin` errors in `~/.local/share/opencode/log/opencode.log`; `opencode api get /api/plugin` lists `opencode-omniroute-auth`.
+1. **Plugin loaded** — no `Plugin must export a default definition` / `failed to load plugin` errors in `~/.local/share/opencode/log/opencode.log`; `opencode api get /api/plugin` lists the plugin under its installed id — `@lazygatto/opencode-omniroute-auth` when installed from npm, `opencode-omniroute-auth` when installed from git.
 2. **Provider active** — `opencode api get /api/provider` shows `omniroute` with a driver package, `settings.baseURL`, a non-empty `settings.apiKey`, and the fetched model list.
 3. **No combo 401s** — no `Failed to fetch combo data: 401` entries after startup.
 4. **End-to-end** — send a short prompt through any `omniroute/*` model (e.g. `omniroute/auto/best-fast`).
@@ -473,10 +475,10 @@ If you see "Connection failed" when running `/connect omniroute`:
 ### Plugin Not Loading
 
 1. On V2 use the `plugins` object entry (see Quick start); on V1 (≥ 1.18.29) use `"plugin": ["opencode-omniroute-auth"]`
-2. Ensure the installed package is **2.0.0 or newer** (`node -e "console.log(require('./node_modules/opencode-omniroute-auth/package.json').version)"` from the config's directory tree)
+2. Ensure the installed package is **2.0.0 or newer** — check the version with `node -e "console.log(require('./node_modules/@lazygatto/opencode-omniroute-auth/package.json').version)"` (use `node_modules/opencode-omniroute-auth` for the git route) run from the config's directory tree
 3. Ensure the package is in a `node_modules` visible from the config directory (see Installation → Where to install)
 4. Restart OpenCode — or the background service — after installing or updating the package; a running server keeps the old module in memory
-5. Check plugin install cache/logs under `~/.cache/opencode/node_modules`
+5. Check plugin install cache/logs under `~/.cache/opencode/npm` (older OpenCode builds used `~/.cache/opencode/node_modules`)
 
 ### Combo Fetch Returns 401
 
